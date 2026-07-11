@@ -1,0 +1,35 @@
+version: 0.2.0.dev0
+semantic_model:
+  - name: demo_sales
+    description: Synthetic demonstration model; replace with reviewed enterprise semantics.
+    ai_context:
+      instructions: Never present this fixture as enterprise production data.
+      synonyms: [sales demo]
+    datasets:
+      - name: orders
+        source: DEMO.ANALYTICS.ORDERS
+        primary_key: [order_id]
+        description: Synthetic order grain, one row per order.
+        fields:
+          - name: order_date
+            expression:
+              dialects:
+                - dialect: SNOWFLAKE
+                  expression: orders.order_date
+            dimension: {is_time: true}
+            description: Order creation date.
+          - name: region
+            expression:
+              dialects:
+                - dialect: SNOWFLAKE
+                  expression: orders.region
+            dimension: {}
+            ai_context: {synonyms: [geography, territory]}
+    metrics:
+      - name: gross_sales
+        expression:
+          dialects:
+            - dialect: SNOWFLAKE
+              expression: SUM(orders.gross_sales_amount)
+        description: Sum of synthetic gross sales amount before returns.
+        ai_context: {synonyms: [revenue, sales]}

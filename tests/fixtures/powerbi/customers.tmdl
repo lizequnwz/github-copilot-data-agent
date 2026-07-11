@@ -1,0 +1,11 @@
+table Customers
+    annotation DataAgent.Source = DEMO.ANALYTICS.CUSTOMERS
+
+    column CustomerId
+        dataType: int64
+        sourceColumn: CUSTOMER_ID
+        isKey: true
+
+    column Region
+        dataType: string
+        sourceColumn: REGION

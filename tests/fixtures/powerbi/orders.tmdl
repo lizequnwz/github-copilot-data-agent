@@ -1,0 +1,22 @@
+table Orders
+    annotation DataAgent.Source = DEMO.ANALYTICS.ORDERS
+
+    column OrderId
+        dataType: int64
+        sourceColumn: ORDER_ID
+        isKey: true
+
+    column OrderDate
+        dataType: dateTime
+        sourceColumn: ORDER_DATE
+
+    column CustomerId
+        dataType: int64
+        sourceColumn: CUSTOMER_ID
+
+    column SalesAmount
+        dataType: decimal
+        sourceColumn: SALES_AMOUNT
+
+    measure 'Total Sales' = SUM(Orders[SalesAmount])
+        formatString: "$"#,0.00

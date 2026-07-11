@@ -1,0 +1,17 @@
+name: sales_model
+description: Generic semantic source fixture.
+tables:
+  - name: Orders
+    source: DEMO.ANALYTICS.ORDERS
+    primary_key: [order_id]
+    columns:
+      - name: order_id
+        type: integer
+      - name: order_date
+        type: date
+      - name: region
+        type: string
+    measures:
+      - name: gross_sales
+        expression: SUM(orders.gross_sales_amount)
+relationships: []

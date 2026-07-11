@@ -1,0 +1,25 @@
+# This is the POC's only Snowflake configuration method.
+# Confirm these non-secret values with the user before every live Snowflake action.
+# Browser SSO opens the organization's identity-provider login locally.
+# Do not add passwords, tokens, private keys, or environment-variable references.
+snowflake:
+  account: "REPLACE_WITH_ORG_ACCOUNT"
+  user: "REPLACE_WITH_ENTERPRISE_USERNAME"
+  authenticator: "externalbrowser"
+  role: "DATA_AGENT_ANALYST_READONLY"
+  warehouse: "DATA_AGENT_WH"
+  database: "REPLACE_WITH_APPROVED_DATABASE"
+  schema: "REPLACE_WITH_APPROVED_SCHEMA"
+  query_tag: "enterprise_data_agent"
+
+limits:
+  max_rows: 5000
+  max_result_bytes: 5000000
+  timeout_seconds: 60
+
+policy:
+  blocked_schemas:
+    - "SNOWFLAKE.ACCOUNT_USAGE"
+    - "RAW_PII"
+  allowed_objects: []
+  allow_sensitive_sampling: false

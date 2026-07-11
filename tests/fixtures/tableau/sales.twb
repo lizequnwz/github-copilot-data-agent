@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<workbook>
+  <datasources>
+    <datasource name="sales" caption="Sales">
+      <connection>
+        <relation name="ORDERS" table="[DEMO].[ANALYTICS].[ORDERS]" type="table" />
+      </connection>
+      <column name="[Region]" caption="Region" datatype="string" role="dimension" />
+      <column name="[Order Date]" caption="Order Date" datatype="date" role="dimension" />
+      <column name="[Total Sales]" caption="Total Sales" datatype="real" role="measure">
+        <calculation class="tableau" formula="SUM([Sales Amount])" />
+      </column>
+    </datasource>
+  </datasources>
+</workbook>

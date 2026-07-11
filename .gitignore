@@ -1,0 +1,14 @@
+.venv/
+.DS_Store
+__pycache__/
+*.py[cod]
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.coverage
+dist/
+build/
+reports/generated/
+memory/pending/*.generated.*
+*.request.json
+*.response.json

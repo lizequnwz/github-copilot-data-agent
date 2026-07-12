@@ -1,0 +1,34 @@
+{
+  "title": "GitHub Copilot Data Analytics Agent",
+  "goal": "Explain the purpose, product capabilities, governed architecture, repository artifacts, implemented workflows, trust controls, validation evidence, and proposed evolution of the semantic-first Snowflake analytics POC",
+  "themePack": "theme01",
+  "pageCount": 14,
+  "part": {
+    "index": 1,
+    "total": 3,
+    "startSlide": 1,
+    "endSlide": 5
+  },
+  "slides": [
+    {
+      "layout": "theme01_page004",
+      "props": {}
+    },
+    {
+      "layout": "theme01_page082",
+      "props": {}
+    },
+    {
+      "layout": "theme01_page075",
+      "props": {}
+    },
+    {
+      "layout": "theme01_page052",
+      "props": {}
+    },
+    {
+      "layout": "theme01_page074",
+      "props": {}
+    }
+  ]
+}

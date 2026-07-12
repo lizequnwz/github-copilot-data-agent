@@ -1,0 +1,772 @@
+{
+  "title": "GitHub Copilot Data Analytics Agent",
+  "goal": "Explain the purpose, product capabilities, governed architecture, repository artifacts, implemented workflows, trust controls, validation evidence, and proposed evolution of the semantic-first Snowflake analytics POC",
+  "audience": "Data leaders, analytics engineers, BI teams, governance stakeholders, and technical product reviewers",
+  "owner": "Enterprise Data Agent POC team",
+  "language": "en",
+  "randomSeed": "theme01-20260711-governed-data-agent",
+  "themePack": "theme01",
+  "pageCount": 14,
+  "slides": [
+    {
+      "layout": "theme01_page001",
+      "props": {
+        "kicker": "PRODUCT WALKTHROUGH",
+        "titleTop": "GitHub Copilot",
+        "titleBottom": "Data Analytics Agent",
+        "en": "SEMANTIC-FIRST SNOWFLAKE POC",
+        "lead": "A governed path from business question to trusted analytical artifact.",
+        "chips": [
+          "Governed meaning",
+          "Read-only execution",
+          "Evidence by design"
+        ],
+        "panelIndex": "POC 01",
+        "panelEn": "PRODUCT",
+        "meta": [
+          {
+            "label": "INTERFACE",
+            "value": "Copilot"
+          },
+          {
+            "label": "RUNTIME",
+            "value": "Python"
+          },
+          {
+            "label": "SEMANTICS",
+            "value": "Ossie"
+          }
+        ],
+        "footnote": "Repository walkthrough · implementation state verified 2026-07-11",
+        "metaCount": 3,
+        "chipCount": 3
+      }
+    },
+    {
+      "layout": "theme01_page027",
+      "props": {
+        "kicker": "# PRODUCT THESIS",
+        "quote": "Correct SQL is not enough. The answer must also carry governed meaning.",
+        "contrastWord": "NOT TEXT-TO-SQL",
+        "highlightWord": "TRUSTED ANALYTICS",
+        "attribution": "Enterprise Data Agent blueprint",
+        "caption": "Meaning, control, and evidence together.",
+        "notes": [
+          {
+            "label": "MEANING FIRST"
+          },
+          {
+            "label": "HUMAN GOVERNED"
+          }
+        ],
+        "noteCount": 2
+      }
+    },
+    {
+      "layout": "theme01_page025",
+      "props": {
+        "kicker": "# PRODUCT PILLARS",
+        "title": "Three capabilities, one trusted answer",
+        "en": "MEANING × EXECUTION × EVIDENCE",
+        "cn": "Each pillar blocks a different failure mode",
+        "companies": [
+          {
+            "name": "Meaning",
+            "role": "Semantic context"
+          },
+          {
+            "name": "Execution",
+            "role": "Typed controls"
+          },
+          {
+            "name": "Evidence",
+            "role": "Validation + lineage"
+          }
+        ],
+        "attributes": [
+          {
+            "label": "Core asset",
+            "values": [
+              "Certified Ossie",
+              "JSON contracts",
+              "Query metadata"
+            ]
+          },
+          {
+            "label": "Main action",
+            "values": [
+              "Resolve concepts",
+              "Compile + execute",
+              "Check + explain"
+            ]
+          },
+          {
+            "label": "Guardrail",
+            "values": [
+              "Never invent",
+              "Read-only policy",
+              "Failure blocks use"
+            ]
+          },
+          {
+            "label": "Product output",
+            "values": [
+              "Shared definition",
+              "Bounded result",
+              "Trusted artifact"
+            ]
+          }
+        ],
+        "caption": "No pillar substitutes for another; trust emerges from their sequence.",
+        "rowCount": 4
+      }
+    },
+    {
+      "layout": "theme01_page014",
+      "props": {
+        "kicker": "# ARCHITECTURE",
+        "title": "Layered by responsibility",
+        "en": "POLICY → GOVERNED CORE → TRUST",
+        "cn": "Simple boundaries keep behavior reviewable",
+        "layers": [
+          {
+            "name": "Control layer",
+            "en": "INTENT & PROCEDURE",
+            "segments": [
+              {
+                "label": "Policy",
+                "items": [
+                  "AGENTS.md",
+                  "Agent profile",
+                  "Copilot rules",
+                  "User confirmation"
+                ]
+              },
+              {
+                "label": "Skills",
+                "items": [
+                  "Environment",
+                  "Read-only query",
+                  "Ossie builder",
+                  "Validation"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Governed core",
+            "en": "MEANING & ACTION",
+            "segments": [
+              {
+                "label": "Semantics",
+                "items": [
+                  "Certified models",
+                  "Candidates",
+                  "Neutral IR",
+                  "Pinned schema"
+                ]
+              },
+              {
+                "label": "Typed runtime",
+                "items": [
+                  "CLI dispatcher",
+                  "Request JSON",
+                  "Response JSON",
+                  "Atomic output"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Trust layer",
+            "en": "SAFETY & DELIVERY",
+            "segments": [
+              {
+                "label": "Security",
+                "items": [
+                  "SQL parser",
+                  "Allowlist",
+                  "Row limits",
+                  "Timeouts"
+                ]
+              },
+              {
+                "label": "Validation",
+                "items": [
+                  "Schema checks",
+                  "Grain checks",
+                  "Unit tests",
+                  "Human review"
+                ]
+              },
+              {
+                "label": "Artifacts",
+                "items": [
+                  "Query answer",
+                  "SVG chart",
+                  "HTML report",
+                  "Pending memory"
+                ]
+              }
+            ]
+          }
+        ],
+        "caption": "Policies decide, skills guide, typed tools act, semantics define, and validation earns trust.",
+        "groupCount": 3
+      }
+    },
+    {
+      "layout": "theme01_page040",
+      "props": {
+        "kicker": "# SEMANTIC ONBOARDING",
+        "title": "Convert without hiding loss",
+        "en": "SOURCE ASSET → REVIEWED CONTEXT",
+        "cn": "One neutral-IR pipeline serves every adapter",
+        "phases": [
+          {
+            "period": "SOURCE",
+            "step": "01 · Extract",
+            "heading": "Detect + preserve",
+            "points": [
+              "Power BI, Tableau, generic, Ossie",
+              "Keep IDs, expressions, source hash"
+            ],
+            "verdict": "Evidence retained"
+          },
+          {
+            "period": "NORMALIZE",
+            "step": "02 · Translate",
+            "heading": "Neutral semantic IR",
+            "points": [
+              "Normalize datasets, fields, metrics",
+              "Label exact, partial, unsupported"
+            ],
+            "verdict": "Loss is explicit"
+          },
+          {
+            "period": "GOVERN",
+            "step": "03 · Certify",
+            "heading": "Emit + validate",
+            "points": [
+              "Candidate YAML + conversion manifest",
+              "Schema check, compare, human review"
+            ],
+            "verdict": "No auto-certification"
+          }
+        ],
+        "caption": "Candidates support review; humans certify trusted context.",
+        "itemCount": 3
+      }
+    },
+    {
+      "layout": "theme01_page061",
+      "props": {
+        "kicker": "# ANALYTICAL WORKFLOW",
+        "title": "Question to answer, gate by gate",
+        "en": "RESOLVE → CONFIRM → COMPILE → VALIDATE → DELIVER",
+        "cn": "Every live action is bounded and attributable",
+        "periods": [
+          "Question",
+          "Meaning",
+          "Context",
+          "Plan",
+          "SQL",
+          "Result",
+          "Validate",
+          "Deliver"
+        ],
+        "bars": [
+          {
+            "label": "Resolve intent",
+            "en": "Metric + grain",
+            "start": 0,
+            "span": 2,
+            "status": "done",
+            "milestone": "Defined",
+            "meta": "Ask if material"
+          },
+          {
+            "label": "Search semantics",
+            "en": "Certified first",
+            "start": 1,
+            "span": 2,
+            "status": "done",
+            "milestone": "Model",
+            "meta": "Source tier"
+          },
+          {
+            "label": "Confirm context",
+            "en": "Config + SSO",
+            "start": 2,
+            "span": 2,
+            "status": "done",
+            "milestone": "Role",
+            "meta": "Per action"
+          },
+          {
+            "label": "Plan + compile",
+            "en": "Typed request",
+            "start": 3,
+            "span": 2,
+            "status": "active",
+            "milestone": "SQL",
+            "meta": "Explicit columns"
+          },
+          {
+            "label": "Execute bounded",
+            "en": "Read-only",
+            "start": 4,
+            "span": 2,
+            "status": "active",
+            "milestone": "Query ID",
+            "meta": "Rows + bytes"
+          },
+          {
+            "label": "Validate + report",
+            "en": "Evidence",
+            "start": 5,
+            "span": 3,
+            "status": "planned",
+            "milestone": "Answer",
+            "meta": "Confidence"
+          }
+        ],
+        "nowIndex": 5,
+        "statusLabels": {
+          "done": "Resolved",
+          "active": "Controlled",
+          "planned": "Evidence"
+        },
+        "nowLineLabel": "Validation gate",
+        "milestoneLegendLabel": "Required evidence",
+        "noteBadgeLabel": "STOP CONDITIONS",
+        "note": "Ambiguous meaning, unconfirmed config, unsafe SQL, wrong role, truncation, or failed validation stops the flow.",
+        "caption": "Defined, fresh, attributable answers.",
+        "itemCount": 6
+      }
+    },
+    {
+      "layout": "theme01_page038",
+      "props": {
+        "kicker": "# TRUST CONTROLS",
+        "title": "Failure becomes a visible gate",
+        "en": "RISK → CHECK → DECISION → SAFE OUTCOME",
+        "cn": "The agent never weakens a control to continue",
+        "risks": [
+          {
+            "title": "Ambiguous meaning",
+            "en": "SEMANTIC RISK",
+            "chain": [
+              "Vague metric",
+              "Search certified",
+              "Ask user",
+              "Stop"
+            ],
+            "impact": "Prevents a plausible but wrong business definition."
+          },
+          {
+            "title": "Unsafe SQL",
+            "en": "EXECUTION RISK",
+            "chain": [
+              "Parse query",
+              "Check objects",
+              "Apply bounds",
+              "Reject"
+            ],
+            "impact": "Blocks writes, SELECT *, stages, dynamic SQL, and blocked objects."
+          },
+          {
+            "title": "Bad result",
+            "en": "ANALYTICAL RISK",
+            "chain": [
+              "Check grain",
+              "Nulls + range",
+              "Coverage",
+              "Fail"
+            ],
+            "impact": "No interpretation or reporting from a failed validation."
+          },
+          {
+            "title": "Sensitive access",
+            "en": "DATA RISK",
+            "chain": [
+              "Read policy",
+              "Block schema",
+              "Deny sample",
+              "No report"
+            ],
+            "impact": "Sensitive-looking sampling requires policy and explicit authorization."
+          }
+        ],
+        "caption": "Browser SSO, an approved read-only role, query limits, and audit metadata reinforce every live path.",
+        "chainCount": 4
+      }
+    },
+    {
+      "layout": "theme01_page066",
+      "props": {
+        "kicker": "# CAPABILITY SYSTEM",
+        "title": "Five skills orchestrate 21 commands",
+        "en": "PROCEDURE ABOVE · TYPED ACTION BELOW",
+        "cn": "Each skill owns a clear operational boundary",
+        "cornerLabel": "SKILL / STAGE",
+        "dims": [
+          "Setup",
+          "Semantics",
+          "Query",
+          "Validate",
+          "Report"
+        ],
+        "rows": [
+          {
+            "name": "Environment setup",
+            "tag": "SSO + config",
+            "scores": [
+              3,
+              1,
+              2,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "Ossie builder",
+            "tag": "Convert + review",
+            "scores": [
+              1,
+              3,
+              2,
+              2,
+              1
+            ]
+          },
+          {
+            "name": "Read-only query",
+            "tag": "Discover + run",
+            "scores": [
+              2,
+              3,
+              3,
+              2,
+              1
+            ]
+          },
+          {
+            "name": "Result validation",
+            "tag": "Check evidence",
+            "scores": [
+              1,
+              1,
+              2,
+              3,
+              2
+            ]
+          },
+          {
+            "name": "Report generation",
+            "tag": "Accessible output",
+            "scores": [
+              1,
+              2,
+              1,
+              3,
+              3
+            ]
+          }
+        ],
+        "legend": [
+          "1 · Supporting",
+          "2 · Shared",
+          "3 · Primary",
+          "Scores show ownership"
+        ],
+        "caption": "Commands span configuration, Snowflake, Ossie, conversion, validation, reporting, and memory proposals.",
+        "rowCount": 5,
+        "dimCount": 5
+      }
+    },
+    {
+      "layout": "theme01_page017",
+      "props": {
+        "kicker": "# REPOSITORY ARTIFACTS",
+        "title": "A reviewable product surface",
+        "en": "POLICY · SKILLS · TOOLS · SEMANTICS · TESTS",
+        "cn": "Trusted and generated stay separate",
+        "items": [
+          {
+            "label": "Policy",
+            "en": "AGENT CONTROL",
+            "v": 3,
+            "amount": "3 guides"
+          },
+          {
+            "label": "Skills",
+            "en": "PROCEDURES",
+            "v": 5,
+            "amount": "5 skills"
+          },
+          {
+            "label": "Typed tools",
+            "en": "DATA_AGENT CLI",
+            "v": 21,
+            "amount": "21 cmds"
+          },
+          {
+            "label": "Semantics",
+            "en": "GOVERNED MEANING",
+            "v": 4,
+            "amount": "4 zones"
+          },
+          {
+            "label": "Quality",
+            "en": "OFFLINE TESTS",
+            "v": 14,
+            "amount": "14 tests"
+          }
+        ],
+        "caption": "Generated zones are writable; trusted zones require review.",
+        "itemCount": 5
+      }
+    },
+    {
+      "layout": "theme01_page039",
+      "props": {
+        "kicker": "# CONSUMABLE OUTPUTS",
+        "title": "Useful artifacts, explicit limits",
+        "en": "DELIVER VALUE WITHOUT HIDING PROVENANCE",
+        "cn": "Built for conversation and review",
+        "bullish": {
+          "label": "Implemented outputs",
+          "en": "READY TO CONSUME",
+          "items": [
+            {
+              "h": "Direct answer",
+              "d": "Definitions, freshness, model, role, confidence, caveats."
+            },
+            {
+              "h": "Accessible chart",
+              "d": "Python SVG with labels, alt text, and underlying table."
+            },
+            {
+              "h": "Offline report",
+              "d": "One responsive HTML file with provenance and SQL appendix."
+            }
+          ]
+        },
+        "cautious": {
+          "label": "Deliberate boundaries",
+          "en": "TRUST BEFORE SCALE",
+          "items": [
+            {
+              "h": "Candidates",
+              "d": "Never silently become certified semantics."
+            },
+            {
+              "h": "Memory",
+              "d": "Stores reviewed notes, not metric definitions."
+            },
+            {
+              "h": "Snowflake",
+              "d": "Optional for conversion and rendering."
+            }
+          ]
+        },
+        "timeline": [
+          {
+            "period": "ASK",
+            "text": "Resolve the analytical contract and intended output."
+          },
+          {
+            "period": "PROVE",
+            "text": "Validate semantics, SQL, result shape, and provenance."
+          },
+          {
+            "period": "DELIVER",
+            "text": "Return a self-contained artifact people can inspect."
+          }
+        ],
+        "caption": "No remote scripts, fonts, or assets are required for generated analytical reports.",
+        "itemCount": 3
+      }
+    },
+    {
+      "layout": "theme01_page007",
+      "props": {
+        "kicker": "# VERIFIED POC",
+        "title": "Small surface, real controls",
+        "en": "IMPLEMENTED AND TESTED OFFLINE",
+        "cn": "Repository validation passed on 2026-07-11",
+        "stats": [
+          {
+            "value": "1",
+            "unit": "custom agent",
+            "label": "Single orchestrator",
+            "sub": "One consistent policy surface for the POC."
+          },
+          {
+            "value": "5",
+            "unit": "procedural skills",
+            "label": "Repeatable workflows",
+            "sub": "Setup, query, semantics, validation, reporting."
+          },
+          {
+            "value": "21",
+            "unit": "typed commands",
+            "label": "Controlled actions",
+            "sub": "JSON requests and response envelopes."
+          },
+          {
+            "value": "14",
+            "unit": "passing tests",
+            "label": "Offline evidence",
+            "sub": "Conversion adapters and report behavior."
+          }
+        ],
+        "caption": "Structure validation confirmed five skills and one agent.",
+        "itemCount": 4
+      }
+    },
+    {
+      "layout": "theme01_page031",
+      "props": {
+        "kicker": "# PROPOSED EVOLUTION",
+        "title": "POC today, enterprise next",
+        "en": "CURRENT CAPABILITY × DELIVERY MODE",
+        "cn": "Scale the runtime after trust boundaries prove out",
+        "quadrants": [
+          {
+            "title": "Offline · Current",
+            "en": "IMPLEMENTED",
+            "desc": "Semantic conversion and artifact generation work without Snowflake.",
+            "chips": [
+              "Neutral IR",
+              "Schema validation",
+              "SVG + HTML",
+              "Fixture tests"
+            ]
+          },
+          {
+            "title": "Live · Current",
+            "en": "CONTROLLED",
+            "desc": "Browser SSO and bounded read-only Snowflake actions serve technical users.",
+            "chips": [
+              "Config confirm",
+              "Metadata search",
+              "SQL validation",
+              "Query ID"
+            ]
+          },
+          {
+            "title": "Offline · Next",
+            "en": "HARDEN",
+            "desc": "Expand semantic coverage and prove correctness across representative questions.",
+            "chips": [
+              "More BI logic",
+              "Golden queries",
+              "Eval suite",
+              "Observability"
+            ]
+          },
+          {
+            "title": "Live · Next",
+            "en": "PRODUCTIZE",
+            "desc": "Move controlled actions behind an enterprise runtime and business interface.",
+            "chips": [
+              "Internal API",
+              "Business UI",
+              "Specialist roles",
+              "Connectors"
+            ]
+          }
+        ],
+        "axisY": {
+          "high": "LIVE SYSTEMS",
+          "low": "OFFLINE ARTIFACTS"
+        },
+        "axisX": {
+          "low": "CURRENT POC",
+          "high": "ENTERPRISE NEXT"
+        },
+        "caption": "Deferred does not mean forgotten: it keeps the POC focused, reviewable, and honest.",
+        "chipCount": 4
+      }
+    },
+    {
+      "layout": "theme01_page083",
+      "props": {
+        "kicker": "# TAKEAWAY",
+        "title": "Trust is the product",
+        "en": "MEANING · CONTROL · EVIDENCE",
+        "cn": "A cool product people can safely consume",
+        "takeaways": [
+          {
+            "tag": "01 · MEANING",
+            "en": "SEMANTIC FIRST",
+            "text": "Resolve metrics and relationships from certified Ossie before raw exploration."
+          },
+          {
+            "tag": "02 · CONTROL",
+            "en": "READ-ONLY BY DESIGN",
+            "text": "Typed tools, confirmation, SSO, role checks, and bounds constrain every live action."
+          },
+          {
+            "tag": "03 · EVIDENCE",
+            "en": "VALIDATE BEFORE USE",
+            "text": "Results carry definitions, freshness, provenance, confidence, and caveats."
+          }
+        ],
+        "summary": "The POC turns a technical chat interface into a governed analytical workflow whose artifacts can be reviewed, trusted, and evolved.",
+        "bandLabel": "GOVERNED ANALYTICS",
+        "caption": "Start narrow, prove the boundaries, then scale the experience.",
+        "takeawayCount": 3
+      }
+    },
+    {
+      "layout": "theme01_page084",
+      "props": {
+        "kicker": "# APPENDIX",
+        "title": "Repository sources",
+        "en": "WHAT GROUNDS THIS WALKTHROUGH",
+        "cn": "Evidence, not aspiration",
+        "listLabel": "PRIMARY ARTIFACTS",
+        "sources": [
+          {
+            "label": "README + DATA_AGENT",
+            "note": "Purpose, package map, typed runtime, and response contract."
+          },
+          {
+            "label": "OPERATING GUIDE",
+            "note": "Conversion, certification, Snowflake, query, and report workflows."
+          },
+          {
+            "label": "TOOLS + SKILLS",
+            "note": "Command contracts, stop conditions, and delivery requirements."
+          },
+          {
+            "label": "BLUEPRINT",
+            "note": "Design thesis, current POC decisions, and deferred roadmap."
+          }
+        ],
+        "panelLabel": "VERIFICATION",
+        "lead": "scripts/validate_project.py passed; all 14 offline unit tests passed before deck generation.",
+        "meta": [
+          {
+            "k": "OSI / OSSIE",
+            "v": "0.2.0.dev0"
+          },
+          {
+            "k": "PYTHON",
+            "v": "3.11+"
+          },
+          {
+            "k": "POC VERSION",
+            "v": "0.1.0"
+          }
+        ],
+        "disclaimer": "Live Snowflake was not exercised; config still has placeholders.",
+        "caption": "Generated from the repository state reviewed on 2026-07-11.",
+        "sourceCount": 4
+      }
+    }
+  ]
+}

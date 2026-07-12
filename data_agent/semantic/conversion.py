@@ -21,7 +21,7 @@ SUPPORTED_SOURCE_TYPES = {"auto", "powerbi", "tableau", "generic", "semantic-ir"
 def detect_source_type(path: Path) -> str:
     if path.is_dir() and any(path.rglob("*.tmdl")):
         return "powerbi"
-    if path.is_file() and path.suffix.lower() == ".twb":
+    if path.is_file() and path.suffix.lower() in {".twb", ".tds", ".tde"}:
         return "tableau"
     if path.is_file() and path.suffix.lower() in {".json", ".yaml", ".yml"}:
         try:
@@ -34,7 +34,8 @@ def detect_source_type(path: Path) -> str:
             return "semantic-ir"
         return "generic"
     raise ContractError(
-        "could not detect semantic source; use a PBIP/TMDL directory, .twb, or JSON/YAML file"
+        "could not detect semantic source; use a PBIP/TMDL directory, Tableau .twb/.tds/.tde, "
+        "or JSON/YAML file"
     )
 
 

@@ -11,6 +11,7 @@ Convert one of the included fixtures:
 ```bash
 uv run python scripts/convert_semantic.py tests/fixtures/powerbi --model-name demo_powerbi
 uv run python scripts/convert_semantic.py tests/fixtures/tableau/sales.twb --model-name demo_tableau
+uv run python scripts/convert_semantic.py examples/tableau/world.tds --model-name world_indicators --source-map examples/tableau/world-source-map.example.json --field-map examples/tableau/world-field-map.example.json
 uv run python scripts/convert_semantic.py tests/fixtures/generic/sales.yaml --model-name demo_generic
 ```
 

@@ -1,0 +1,7 @@
+{
+  "World Indicators": {
+    "Birth Rate": "birth_rate",
+    "CO2 Emissions": "co2_emissions",
+    "Health Exp % GDP": "health_exp_pct_gdp"
+  }
+}

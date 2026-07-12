@@ -11,6 +11,8 @@ import yaml
 
 from data_agent.io import ContractError, envelope, require_string
 
+_SQL_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]*$")
+
 
 def _hash_files(files: list[Path]) -> str:
     digest = hashlib.sha256()
@@ -76,7 +78,10 @@ def _translate_aggregate(
             function = {"AVERAGE": "AVG", "COUNTD": "COUNT(DISTINCT"}.get(
                 match.group(1).upper(), match.group(1).upper()
             )
-            field = f"{dataset_name}.{_slug(match.group(2), 'field')}"
+            source_field = match.group(2)
+            field = (field_lookup or {}).get(
+                source_field.casefold(), f"{dataset_name}.{_slug(source_field, 'field')}"
+            )
             if function == "COUNT(DISTINCT":
                 return f"COUNT(DISTINCT {field})", "exact"
             return f"{function}({field})", "exact"
@@ -273,6 +278,26 @@ def extract_powerbi(request: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+def _local_tag(element: ET.Element) -> str:
+    return element.tag.rsplit("}", 1)[-1]
+
+
+def _descendants(element: ET.Element, name: str) -> list[ET.Element]:
+    return [item for item in element.iter() if _local_tag(item) == name]
+
+
+def _first_descendant(element: ET.Element, name: str) -> ET.Element | None:
+    return next(iter(_descendants(element, name)), None)
+
+
+def _tableau_identifier(value: str | None) -> str:
+    raw = str(value or "").strip()
+    parts = re.findall(r"\[([^\]]+)\]", raw)
+    if parts:
+        return str(parts[-1])
+    return raw.strip("[]'\"")
+
+
 def _tableau_source(relation: ET.Element | None) -> str | None:
     if relation is None:
         return None
@@ -283,79 +308,331 @@ def _tableau_source(relation: ET.Element | None) -> str | None:
     return ".".join(parts) if parts else table.strip("[]")
 
 
+def _field_map(request: dict[str, Any]) -> dict[str, str]:
+    value = request.get("field_map", {})
+    if not isinstance(value, dict):
+        raise ContractError("field_map must be an object mapping Tableau fields to SQL column names")
+    result: dict[str, str] = {}
+    for key, mapped in value.items():
+        if isinstance(mapped, str):
+            result[str(key).casefold()] = _tableau_sql_identifier(mapped)
+            continue
+        if not isinstance(mapped, dict):
+            raise ContractError("field_map values must be strings or datasource-to-field objects")
+        for field, column in mapped.items():
+            if not isinstance(column, str):
+                raise ContractError("nested field_map values must be SQL column-name strings")
+            result[f"{key}.{field}".casefold()] = _tableau_sql_identifier(column)
+    return result
+
+
+def _tableau_sql_identifier(value: str) -> str:
+    normalized = value.strip()
+    if not _SQL_IDENTIFIER.fullmatch(normalized):
+        raise ContractError(
+            "field_map values must be unquoted SQL identifiers; expose quoted or spaced source "
+            "columns through a view with normalized aliases"
+        )
+    return normalized
+
+
+def _sibling_with_suffix(source: Path, suffix: str) -> Path | None:
+    expected = f"{source.stem}{suffix}".casefold()
+    for candidate in source.parent.iterdir():
+        if candidate.is_file() and candidate.name.casefold() == expected:
+            return candidate
+    return None
+
+
+def _resolve_tableau_descriptor(
+    source: Path, descriptor_path: str | None = None
+) -> tuple[Path, list[Path], str]:
+    suffix = source.suffix.casefold()
+    if suffix in {".twb", ".tds"} and source.is_file():
+        sources = [source]
+        if suffix == ".tds":
+            sibling_extract = _sibling_with_suffix(source, ".tde")
+            if sibling_extract is not None:
+                sources.append(sibling_extract)
+        return source, sources, suffix.removeprefix(".")
+    if suffix == ".tde" and source.is_file():
+        descriptor = (
+            Path(descriptor_path).resolve() if descriptor_path else _sibling_with_suffix(source, ".tds")
+        )
+        if descriptor is None or descriptor.suffix.casefold() != ".tds" or not descriptor.is_file():
+            raise ContractError(
+                "a .tde extract is binary; provide a same-named .tds datasource descriptor, "
+                "a valid descriptor_path, or export the datasource as .tds/.twb"
+            )
+        return descriptor, [descriptor, source], "tde-with-tds"
+    raise ContractError("source_path must be a Tableau .twb, .tds, or .tde with a sibling .tds")
+
+
+def _read_tableau_xml(path: Path) -> str:
+    payload = path.read_bytes()
+    for encoding in ("utf-8-sig", "utf-16", "utf-8"):
+        try:
+            return payload.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    raise ContractError("Tableau XML must be UTF-8 or UTF-16")
+
+
+def _tableau_datasources(root: ET.Element) -> list[ET.Element]:
+    if _local_tag(root) == "datasource":
+        return [root]
+    return _descendants(root, "datasource")
+
+
+def _tableau_physical_source(
+    datasource: ET.Element,
+    source_name: str,
+    dataset_name: str,
+    mapping: dict[str, str],
+) -> str | None:
+    relation = next(
+        (item for item in _descendants(datasource, "relation") if item.get("table")), None
+    )
+    connection = _first_descendant(datasource, "connection")
+    relation_source = _tableau_source(relation)
+    lookup_keys = [source_name, dataset_name]
+    if relation is not None:
+        lookup_keys.append(str(relation.get("name") or ""))
+    if relation_source:
+        lookup_keys.append(relation_source)
+    for key in lookup_keys:
+        if key and key.casefold() in mapping:
+            candidate = mapping[key.casefold()]
+            return None if "REPLACE_WITH" in candidate.upper() else candidate
+    connection_class = str(connection.get("class") if connection is not None else "").casefold()
+    database_name = str(connection.get("dbname") if connection is not None else "").casefold()
+    if connection_class == "dataengine" or database_name.endswith(".tde"):
+        return None
+    return relation_source
+
+
+def _tableau_column_records(datasource: ET.Element) -> list[dict[str, Any]]:
+    records: dict[str, dict[str, Any]] = {}
+    for column in _descendants(datasource, "column"):
+        raw_name = _tableau_identifier(column.get("caption") or column.get("name"))
+        if not raw_name:
+            continue
+        calculation = _first_descendant(column, "calculation")
+        records[raw_name.casefold()] = {
+            "name": raw_name,
+            "tableau_name": column.get("name") or raw_name,
+            "data_type": column.get("datatype"),
+            "role": str(column.get("role") or "").casefold(),
+            "aggregation": column.get("aggregation"),
+            "formula": calculation.get("formula") if calculation is not None else None,
+            "source": "column",
+        }
+    for metadata in _descendants(datasource, "metadata-record"):
+        if metadata.get("class") != "column":
+            continue
+        values = {
+            _local_tag(child): (child.text or "").strip() for child in list(metadata)
+        }
+        raw_name = _tableau_identifier(values.get("local-name") or values.get("remote-name"))
+        if not raw_name:
+            continue
+        existing = records.setdefault(
+            raw_name.casefold(),
+            {
+                "name": raw_name,
+                "tableau_name": values.get("local-name") or raw_name,
+                "data_type": values.get("local-type"),
+                "role": "",
+                "aggregation": values.get("aggregation"),
+                "formula": None,
+                "source": "metadata-record",
+            },
+        )
+        if not existing.get("data_type"):
+            existing["data_type"] = values.get("local-type")
+        if not existing.get("aggregation"):
+            existing["aggregation"] = values.get("aggregation")
+        if not existing.get("tableau_name"):
+            existing["tableau_name"] = values.get("local-name") or raw_name
+    return list(records.values())
+
+
+def _tableau_aggregation_metric(
+    aggregation: str | None, field_expression: str
+) -> tuple[str | None, str | None]:
+    normalized = str(aggregation or "").casefold()
+    functions = {
+        "sum": ("SUM", "sum"),
+        "avg": ("AVG", "average"),
+        "average": ("AVG", "average"),
+        "min": ("MIN", "minimum"),
+        "max": ("MAX", "maximum"),
+        "count": ("COUNT", "count"),
+        "countd": ("COUNT(DISTINCT", "distinct_count"),
+    }
+    function = functions.get(normalized)
+    if function is None:
+        return None, None
+    if function[0] == "COUNT(DISTINCT":
+        return f"COUNT(DISTINCT {field_expression})", function[1]
+    return f"{function[0]}({field_expression})", function[1]
+
+
+def _is_complex_tableau_formula(formula: str) -> bool:
+    upper = formula.upper()
+    return "{" in formula or any(
+        token in upper
+        for token in (
+            "LOOKUP(",
+            "WINDOW_",
+            "RUNNING_",
+            "PREVIOUS_VALUE(",
+            "TOTAL(",
+            "RANK(",
+            "INDEX(",
+            "SIZE(",
+        )
+    )
+
+
 def extract_tableau_ir(request: dict[str, Any]) -> dict[str, Any]:
-    source = Path(require_string(request, "source_path")).resolve()
-    if source.suffix.lower() != ".twb" or not source.is_file():
-        raise ContractError("source_path must be an unpacked .twb workbook")
-    text = source.read_text(encoding="utf-8", errors="strict")
+    input_source = Path(require_string(request, "source_path")).resolve()
+    descriptor_value = request.get("descriptor_path")
+    if descriptor_value is not None and not isinstance(descriptor_value, str):
+        raise ContractError("descriptor_path must be a string path to a Tableau .tds file")
+    descriptor, source_files, source_format = _resolve_tableau_descriptor(
+        input_source, descriptor_value
+    )
+    text = _read_tableau_xml(descriptor)
     if "<!DOCTYPE" in text.upper() or "<!ENTITY" in text.upper():
         raise ContractError("DTD and entity declarations are blocked")
-    root = ET.fromstring(text)
+    try:
+        root = ET.fromstring(text)
+    except ET.ParseError as exc:
+        raise ContractError(f"invalid Tableau XML: {exc}") from exc
     mapping = _source_map(request)
+    field_mapping = _field_map(request)
     datasets: list[dict[str, Any]] = []
     metrics: list[dict[str, Any]] = []
     unsupported: list[dict[str, str]] = []
 
-    for datasource in root.findall(".//datasource"):
-        source_name = datasource.get("caption") or datasource.get("name") or "unnamed_datasource"
+    datasources = _tableau_datasources(root)
+    if not datasources:
+        raise ContractError("Tableau source contains no datasource element")
+    for datasource in datasources:
+        source_name = (
+            datasource.get("caption")
+            or datasource.get("formatted-name")
+            or datasource.get("name")
+            or descriptor.stem
+        )
         dataset_name = _slug(source_name, "datasource")
-        relation = datasource.find(".//relation[@table]")
-        physical_source = mapping.get(source_name.casefold()) or mapping.get(dataset_name.casefold()) or _tableau_source(relation)
-        fields = []
-        for column in datasource.findall(".//column"):
-            raw_name = (column.get("caption") or column.get("name") or "unnamed").strip("[]")
-            physical_name = (column.get("name") or raw_name).strip("[]").split("].[", 1)[-1]
-            calculation = column.find("calculation")
-            formula = (calculation.get("formula") or "") if calculation is not None else ""
-            role = (column.get("role") or "").casefold()
-            data_type = column.get("datatype")
-            is_metric = calculation is not None and role == "measure"
-            if is_metric:
-                normalized, status = _translate_aggregate(
-                    formula, dataset_name, language="TABLEAU"
+        physical_source = _tableau_physical_source(
+            datasource, source_name, dataset_name, mapping
+        )
+        fields: list[dict[str, Any]] = []
+        field_lookup: dict[str, str] = {}
+        source_columns = _tableau_column_records(datasource)
+        for record in source_columns:
+            raw_name = str(record["name"])
+            field_name = _slug(raw_name, "field")
+            mapping_keys = [
+                f"{source_name}.{raw_name}".casefold(),
+                f"{dataset_name}.{raw_name}".casefold(),
+                raw_name.casefold(),
+            ]
+            physical_column = next(
+                (field_mapping[key] for key in mapping_keys if key in field_mapping), field_name
+            )
+            expression = f"{dataset_name}.{physical_column}"
+            field_lookup[raw_name.casefold()] = expression
+            formula = record.get("formula")
+            translation_status = "exact" if formula is None else "requires-human-review"
+            if formula and _is_complex_tableau_formula(str(formula)):
+                unsupported.append(
+                    {"field": raw_name, "construct": "LOD_or_table_calculation"}
                 )
-                metrics.append(
-                    {
-                        "id": f"{source_name}.{raw_name}",
-                        "name": raw_name,
-                        "dataset": source_name,
-                        "source_expression": {"language": "TABLEAU", "value": formula},
-                        "normalized_expression": normalized,
-                        "translation_status": status,
-                    }
+            fields.append(
+                {
+                    "id": f"{source_name}.{raw_name}",
+                    "name": raw_name,
+                    "source_expression": {
+                        "language": "TABLEAU",
+                        "value": formula or record.get("tableau_name"),
+                    },
+                    "normalized_expression": expression,
+                    "data_type": record.get("data_type"),
+                    "is_dimension": record.get("role") == "dimension",
+                    "is_time": str(record.get("data_type")).casefold()
+                    in {"date", "datetime", "timestamp"},
+                    "translation_status": translation_status,
+                }
+            )
+
+        for record in source_columns:
+            if record.get("role") != "measure":
+                continue
+            raw_name = str(record["name"])
+            field_expression = field_lookup[raw_name.casefold()]
+            formula = str(record.get("formula") or "").strip()
+            metric_expression: str | None
+            metric_suffix: str | None
+            metric_status: str
+            if formula == "1":
+                metric_expression, metric_suffix, metric_status = "COUNT(1)", "count", "exact"
+            elif formula:
+                metric_expression, metric_status = _translate_aggregate(
+                    formula,
+                    dataset_name,
+                    language="TABLEAU",
+                    field_lookup=field_lookup,
                 )
+                metric_suffix = "calculated"
+                if _is_complex_tableau_formula(formula):
+                    metric_status = "requires-human-review"
             else:
-                field_name = _slug(raw_name, "field")
-                fields.append(
-                    {
-                        "id": f"{source_name}.{raw_name}",
-                        "name": raw_name,
-                        "source_expression": {
-                            "language": "TABLEAU",
-                            "value": formula or column.get("name"),
-                        },
-                        "normalized_expression": (
-                            f"{dataset_name}.{_slug(physical_name, field_name)}"
-                        ),
-                        "data_type": data_type,
-                        "is_dimension": role == "dimension" or calculation is None,
-                        "is_time": str(data_type).casefold() in {"date", "datetime"},
-                        "translation_status": "exact" if calculation is None else "requires-human-review",
-                    }
+                metric_expression, metric_suffix = _tableau_aggregation_metric(
+                    record.get("aggregation"), field_expression
                 )
-            if calculation is not None and (
-                "{" in formula
-                or "LOOKUP(" in formula.upper()
-                or "WINDOW_" in formula.upper()
-            ):
-                unsupported.append({"field": raw_name, "construct": "LOD_or_table_calculation"})
+                metric_status = (
+                    "equivalent-with-assumptions"
+                    if metric_expression is not None
+                    else "requires-human-review"
+                )
+            if metric_expression is None:
+                unsupported.append(
+                    {"field": raw_name, "construct": "unmapped_measure_aggregation_or_formula"}
+                )
+            metrics.append(
+                {
+                    "id": f"{source_name}.{raw_name}",
+                    "name": (
+                        "number_of_records"
+                        if formula == "1"
+                        else f"{metric_suffix or 'measure'}_{_slug(raw_name, 'measure')}"
+                    ),
+                    "dataset": source_name,
+                    "description": (
+                        f"Tableau {'calculation' if formula else 'default aggregation'} "
+                        f"for {raw_name}."
+                    ),
+                    "source_expression": {
+                        "language": "TABLEAU",
+                        "value": formula or record.get("aggregation"),
+                    },
+                    "source_format": "tableau-tds-metadata",
+                    "normalized_expression": metric_expression,
+                    "translation_status": metric_status,
+                }
+            )
+
         datasets.append(
             {
                 "id": source_name,
                 "name": source_name,
                 "physical_source": physical_source,
                 "fields": fields,
-                "source_file": source.name,
+                "source_file": descriptor.name,
                 "translation_status": "exact" if physical_source else "requires-human-review",
             }
         )
@@ -363,8 +640,10 @@ def extract_tableau_ir(request: dict[str, Any]) -> dict[str, Any]:
     return {
         "ir_version": "1.0",
         "source_type": "tableau",
-        "source_artifact": request.get("source_artifact", source.stem),
-        "snapshot_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+        "source_format": source_format,
+        "source_artifact": request.get("source_artifact", input_source.stem),
+        "source_files": [str(path) for path in source_files],
+        "snapshot_sha256": _hash_files(source_files),
         "datasets": datasets,
         "relationships": [],
         "metrics": metrics,
@@ -379,7 +658,10 @@ def extract_tableau(request: dict[str, Any]) -> dict[str, Any]:
         "success",
         semantic_ir=ir,
         completeness="partial" if ir["unsupported"] else "best-effort",
-        warnings=["Workbook XML conversion preserves unsupported calculations for review."],
+        warnings=[
+            "Tableau .tde extracts require a .tds descriptor for semantic metadata.",
+            "Default Tableau aggregations are emitted as usable metrics with assumptions for review.",
+        ],
     )
 
 

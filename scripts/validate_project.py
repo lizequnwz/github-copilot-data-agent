@@ -26,6 +26,9 @@ def main() -> int:
         "scripts/render_report_demo.py",
         "tests/test_semantic_conversion.py",
         "tests/test_reporting.py",
+        "examples/tableau/world.tds",
+        "examples/tableau/world-source-map.example.json",
+        "examples/tableau/world-field-map.example.json",
     ]
     for item in required:
         if not (ROOT / item).is_file():

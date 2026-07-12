@@ -30,12 +30,13 @@ The neutral IR is the loss-accounting boundary. It retains source IDs, source ex
 | Input | Detection | Current extraction |
 |---|---|---|
 | Power BI PBIP/TMDL | Directory containing `.tmdl` | Tables, columns, data types, key flags, relationships, simple DAX aggregates, source expressions, selected unsupported constructs |
-| Tableau | `.twb` file | Data sources, physical table, dimensions, time fields, simple aggregate calculations, unsupported LOD/table calculations |
+| Tableau workbook | `.twb` file | Data sources, physical table, dimensions, time fields, simple aggregate calculations, unsupported LOD/table calculations |
+| Tableau datasource / extract | `.tds`, or `.tde` with a same-named `.tds` | Datasource metadata, metadata-only fields, default aggregations as reviewable metrics, direct calculations, and source snapshot hashing across descriptor/extract |
 | Generic semantic YAML/JSON | `datasets` or `tables` array | Datasets/tables, fields/columns, metrics/measures, relationships, keys, descriptions |
 | Neutral semantic IR | `ir_version` plus `datasets` | Direct Ossie emission |
 | Existing Ossie | `version` plus `semantic_model` | Validation and candidate manifest generation |
 
-Binary `.pbix` and packaged `.twbx` files must first be unpacked or exported to PBIP/TMDL and `.twb`. Live Power BI XMLA and Tableau Metadata API ingestion are later adapters; they should emit the same neutral IR.
+Binary `.pbix` and packaged `.twbx` files must first be unpacked or exported to PBIP/TMDL and `.twb`. A raw Tableau `.tde` is binary and needs a `.tds` descriptor; use a same-named sibling or pass `descriptor_path` when the descriptor has a different name or location. The descriptor supplies fields, default aggregations, calculations, and datasource identity. Live Power BI XMLA and Tableau Metadata API ingestion are later adapters; they should emit the same neutral IR.
 
 ## Translation behavior
 
@@ -79,11 +80,45 @@ Example request:
   "model_name": "sales",
   "source_map": {
     "Orders": "PROD.ANALYTICS.ORDERS"
+  },
+  "field_map": {
+    "Orders": {
+      "Order Date": "order_date"
+    }
   }
 }
 ```
 
 Lower-level commands—`powerbi-extract`, `tableau-extract`, and `ir-to-osi`—remain available for inspecting or adjusting intermediate output.
+
+### Tableau `.tds` / `.tde` mapping
+
+For a Tableau extract, use a warehouse table or view that exposes normalized, unquoted aliases. A `.tde` does not provide a Snowflake relation on its own.
+
+```json
+{
+  "source_map": {
+    "World Indicators": "ANALYTICS.PUBLISHED.WORLD_INDICATORS"
+  },
+  "field_map": {
+    "World Indicators": {
+      "Birth Rate": "birth_rate",
+      "CO2 Emissions": "co2_emissions"
+    }
+  }
+}
+```
+
+Then run:
+
+```bash
+uv run python scripts/convert_semantic.py examples/tableau/world.tds \
+  --model-name world_indicators \
+  --source-map examples/tableau/world-source-map.example.json \
+  --field-map examples/tableau/world-field-map.example.json
+```
+
+Copy and edit the supplied map files first. A `REPLACE_WITH...` value remains unresolved and produces a blocking review issue. The adapter emits Tableau default aggregations such as `Avg` as metric expressions such as `AVG(world_indicators.birth_rate)`, with `equivalent-with-assumptions` status because a Tableau visualization can override its default aggregation. Complex LOD, table calculations, and unsupported formulas remain review items.
 
 ## Candidate artifacts
 

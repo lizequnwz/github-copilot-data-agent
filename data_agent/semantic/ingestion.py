@@ -261,7 +261,9 @@ def build_osi_from_ir(ir: dict[str, Any], model_name: str | None = None) -> tupl
     extension = {
         "lifecycle": "candidate",
         "source_type": ir.get("source_type"),
+        "source_format": ir.get("source_format"),
         "source_artifact": ir.get("source_artifact"),
+        "source_files": ir.get("source_files", []),
         "snapshot_sha256": ir.get("snapshot_sha256"),
         "ir_version": ir.get("ir_version"),
     }

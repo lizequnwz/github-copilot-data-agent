@@ -9,7 +9,7 @@ Select the `data-analytics` Copilot agent and ask:
 The agent uses `osi-semantic-builder` to:
 
 1. Identify the input and expected output name.
-2. Detect PBIP/TMDL, Tableau `.twb`, generic JSON/YAML, neutral IR, or existing Ossie.
+2. Detect PBIP/TMDL, Tableau `.twb`/`.tds`/`.tde` with sibling `.tds`, generic JSON/YAML, neutral IR, or existing Ossie.
 3. Ask for a physical source map only when missing mappings would make the output unusable.
 4. Extract neutral semantic IR with source expressions and a source hash.
 5. Translate only supported expressions and label every assumption or loss.

@@ -12,7 +12,7 @@ Turn a user-provided semantic asset into a usable Apache Ossie candidate while p
 Use this skill when the user provides or references:
 
 - an unpacked Power BI PBIP/TMDL directory
-- a Tableau `.twb` workbook
+- a Tableau `.twb` workbook, `.tds` datasource, or `.tde` extract with a same-named `.tds` descriptor
 - generic semantic JSON or YAML
 - neutral semantic IR
 - an Ossie/OSI document to validate or normalize
@@ -22,7 +22,7 @@ Use this skill when the user provides or references:
 1. Identify the source path, desired model name, and intended physical platform.
 2. Read `docs/SEMANTIC_CONVERSION.md` for the supported input and translation boundary.
 3. Detect the format with `semantic-convert` unless the user specifies it.
-4. For PBIP/TMDL with unresolved physical tables, request or build a `source_map` from reviewed metadata. Do not invent a production table.
+4. For PBIP/TMDL or Tableau extracts with unresolved physical tables, request or build a `source_map` from reviewed metadata. For Tableau display names that do not match SQL aliases, request a `field_map`. Do not invent a production table or quoted source-column mapping.
 5. Run the complete workflow:
 
    ```bash

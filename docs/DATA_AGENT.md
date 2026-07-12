@@ -17,7 +17,7 @@ python -m data_agent <command> --input request.json --output response.json
 | `cli.py` | Declares command names, dispatches handlers, normalizes exit behavior, and hides unexpected exception detail from response JSON. |
 | `io.py` | Reads bounded JSON requests, validates common string fields, creates response envelopes, and writes responses atomically. |
 | `config.py` | Loads the single non-secret Snowflake YAML configuration into immutable settings. |
-| `bi/extract.py` | Detectable source adapters for Power BI TMDL/PBIP, Tableau `.twb`, generic JSON/YAML, and neutral IR. Every adapter emits neutral semantic IR. |
+| `bi/extract.py` | Detectable source adapters for Power BI TMDL/PBIP, Tableau `.twb`/`.tds`/`.tde` with descriptor, generic JSON/YAML, and neutral IR. Every adapter emits neutral semantic IR. |
 | `semantic/conversion.py` | Runs the complete source-to-candidate workflow, validates against the vendored Ossie schema, and writes the conversion manifest. |
 | `semantic/ingestion.py` | Converts neutral IR into Ossie datasets, fields, relationships, metrics, and custom extensions while collecting issues. |
 | `semantic/models.py` | Loads, validates, enumerates, and searches Ossie JSON/YAML documents. |

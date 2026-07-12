@@ -36,12 +36,12 @@ All live commands use `snowflake_config.yaml`, the only supported POC configurat
 | `osi-search` | `request_id`, `query`; optional `roots`, `limit` | Search certified models by default, or explicit candidate roots when requested. |
 | `osi-compile` | `request_id`, `model_path`, `plan` | Compile a governed metric/dimension/filter plan into bounded Snowflake SQL. |
 | `semantic-diff` | `request_id`, `before_path`, `after_path` | Compare normalized semantic documents and return content hashes. |
-| `semantic-convert` | `request_id`, `source_path`; optional `source_type`, `model_name`, `source_map` | Detect, extract, emit, validate, and write a candidate Ossie YAML plus conversion manifest. |
+| `semantic-convert` | `request_id`, `source_path`; optional `source_type`, `model_name`, `descriptor_path`, `source_map`, `field_map` | Detect, extract, emit, validate, and write a candidate Ossie YAML plus conversion manifest. |
 | `powerbi-extract` | `request_id`, `source_path`; optional `source_artifact`, `source_map` | Extract unpacked PBIP/TMDL tables, fields, keys, relationships, and supported simple measures to neutral semantic IR. |
-| `tableau-extract` | `request_id`, `source_path`; optional `source_artifact`, `source_map` | Extract a `.twb` data source, fields, and supported simple calculated measures to neutral semantic IR. |
+| `tableau-extract` | `request_id`, `source_path`; optional `source_artifact`, `source_map`, `field_map` | Extract a Tableau `.twb`, `.tds`, or `.tde` with sibling `.tds` into neutral semantic IR. |
 | `ir-to-osi` | `request_id`, `semantic_ir`; optional `model_name` | Convert neutral IR to candidate OSI content while preserving source metadata and review warnings. |
 
-`semantic-convert` accepts `auto`, `powerbi`, `tableau`, `generic`, `semantic-ir`, or `osi` as `source_type`. It writes only under `semantic/candidates/`. See [Semantic conversion](SEMANTIC_CONVERSION.md) for the IR contract, translation states, and review workflow.
+`semantic-convert` accepts `auto`, `powerbi`, `tableau`, `generic`, `semantic-ir`, or `osi` as `source_type`. It writes only under `semantic/candidates/`. `descriptor_path` locates a `.tds` companion for a separately named `.tde`; `source_map` maps a Tableau datasource to a real warehouse relation; `field_map` maps Tableau display fields to unquoted SQL column aliases. See [Semantic conversion](SEMANTIC_CONVERSION.md) for the IR contract, translation states, and review workflow.
 
 ## Validation, reporting, and memory
 

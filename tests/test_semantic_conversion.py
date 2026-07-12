@@ -145,7 +145,7 @@ class SemanticConversionTests(unittest.TestCase):
         self.assertEqual(ir["metrics"][0]["normalized_expression"], "SUM(utf16_scores.score)")
 
     def test_world_tds_converts_to_schema_valid_candidate(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/candidates") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
             response = convert_semantic(
                 {
                     "request_id": "world-convert",
@@ -159,15 +159,15 @@ class SemanticConversionTests(unittest.TestCase):
                 }
             )
             self.assertEqual(response["status"], "success")
-            candidate = yaml.safe_load(Path(response["candidate_path"]).read_text())
+            generated = yaml.safe_load(Path(response["model_path"]).read_text())
             manifest = json.loads(Path(response["manifest_path"]).read_text())
-            self.assertEqual(validate_document(candidate, SCHEMA), [])
+            self.assertEqual(validate_document(generated, SCHEMA), [])
             self.assertTrue(manifest["osi"]["schema_valid"])
             self.assertEqual(manifest["summary"]["metrics"], 24)
-            self.assertEqual(candidate["semantic_model"][0]["metrics"][0]["name"], "average_birth_rate")
+            self.assertEqual(generated["semantic_model"][0]["metrics"][0]["name"], "average_birth_rate")
 
     def test_tableau_placeholder_source_map_remains_blocking(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/candidates") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
             response = convert_semantic(
                 {
                     "request_id": "world-placeholder",
@@ -216,7 +216,7 @@ class SemanticConversionTests(unittest.TestCase):
         self.assertEqual(ir["metrics"][0]["normalized_expression"], "SUM(namespaced_scores.score)")
 
     def test_end_to_end_generic_conversion_writes_candidate_and_manifest(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/candidates") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
             response = convert_semantic(
                 {
                     "request_id": "generic",
@@ -227,9 +227,9 @@ class SemanticConversionTests(unittest.TestCase):
                 }
             )
             self.assertEqual(response["status"], "success")
-            candidate = yaml.safe_load(Path(response["candidate_path"]).read_text())
+            generated = yaml.safe_load(Path(response["model_path"]).read_text())
             manifest = json.loads(Path(response["manifest_path"]).read_text())
-            self.assertEqual(validate_document(candidate, SCHEMA), [])
+            self.assertEqual(validate_document(generated, SCHEMA), [])
             self.assertTrue(manifest["osi"]["schema_valid"])
             self.assertEqual(manifest["summary"]["metrics"], 1)
 

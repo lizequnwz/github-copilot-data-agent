@@ -1,17 +1,17 @@
 ---
 name: analytics-report-generation
-description: Create an accessible Python-rendered SVG chart or self-contained responsive HTML report from validated aggregate results.
+description: Create an accessible Python-rendered SVG chart or self-contained responsive HTML report from validated aggregate results. Use when a user explicitly asks to visualize, package, or share an analysis result.
 ---
 
 # Procedure
 
-1. Require a passing result-validation response and aggregate, non-restricted rows.
+1. Require passing result checks and aggregate, non-restricted rows.
 2. Choose a line chart for a time trend, a sorted bar chart for up to 15 categories, or a table when exact values matter more than shape.
 3. Include a descriptive title, units, date range, direct value labels, and chart alternative text. Never rely on color alone.
 4. Use `render-chart`; do not generate arbitrary plotting code, JavaScript, or remote assets.
 5. Provide the chart and its underlying table to `render-report`.
-6. Include the direct finding, definitions, methodology, freshness, Ossie model/source tier, query ID, role, confidence, SQL appendix, and caveats.
-7. Write the final HTML under `reports/generated/` and verify it contains the expected title, rows, provenance, responsive viewport, and chart text alternative.
+6. Include the direct finding, definitions, methodology, and useful caveats. Include semantic model, freshness, query ID, role, and SQL when they are available from a live query.
+7. Write the final HTML under `reports/generated/` and verify it contains the expected title, rows, query details, responsive viewport, and chart text alternative.
 
 # UX requirements
 
@@ -23,4 +23,4 @@ description: Create an accessible Python-rendered SVG chart or self-contained re
 
 # Stop conditions
 
-Stop on unvalidated or truncated results, missing provenance, row-level sensitive data, non-finite chart values, misleading chart selection, or unsafe markup.
+Stop on unvalidated or truncated results, row-level sensitive data, non-finite chart values, misleading chart selection, or unsafe markup.

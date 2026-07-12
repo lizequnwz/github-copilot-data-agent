@@ -1,6 +1,6 @@
 # Vendored Ossie schema
 
-`osi-0.2.0.dev0.schema.json` is the offline validation contract for this POC.
+`osi-0.2.0.dev0.schema.json` is the project's offline validation contract.
 
 - Selected source: <https://github.com/open-semantic-interchange/ossie/blob/main/core-spec/osi-schema.json>
 - Current upstream home: <https://github.com/apache/ossie/blob/main/core-spec/osi-schema.json>

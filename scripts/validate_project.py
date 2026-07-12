@@ -15,93 +15,72 @@ def main() -> int:
         "AGENTS.md",
         ".github/copilot-instructions.md",
         ".github/agents/data-analytics.agent.md",
-        "snowflake_config.yaml",
+        ".github/skills/snowflake-analysis/SKILL.md",
+        ".github/skills/osi-semantic-model-builder/SKILL.md",
+        ".github/skills/osi-semantic-model-builder/agents/openai.yaml",
+        ".github/skills/osi-semantic-model-builder/scripts/build_model.py",
+        ".github/skills/analytics-report-generation/SKILL.md",
+        "snowflake_config.example.yaml",
+        "semantic/models/demo_sales.yaml",
         "semantic/schemas/osi-0.2.0.dev0.schema.json",
-        "semantic/schemas/README.md",
-        "docs/OPERATING_GUIDE.md",
-        "docs/SEMANTIC_CONVERSION.md",
-        "docs/DATA_AGENT.md",
-        "docs/TOOLS.md",
-        "scripts/convert_semantic.py",
-        "scripts/render_report_demo.py",
-        "tests/test_semantic_conversion.py",
-        "tests/test_reporting.py",
-        "examples/tableau/world.tds",
-        "examples/tableau/world-source-map.example.json",
-        "examples/tableau/world-field-map.example.json",
+        "docs/DESIGN.md",
+        "docs/WORKFLOW.md",
+        "docs/SEMANTIC_MODELS.md",
+        "examples/analysis/sales-by-region.json",
+        "scripts/demo_analysis.py",
     ]
     for item in required:
         if not (ROOT / item).is_file():
             errors.append(f"missing required file: {item}")
+
     agent_paths = list((ROOT / ".github/agents").glob("*.agent.md"))
-    if [path.name for path in agent_paths] != ["data-analytics.agent.md"]:
-        errors.append("POC must contain only .github/agents/data-analytics.agent.md")
     for path in agent_paths:
         frontmatter = _frontmatter(path, errors)
-        if not frontmatter.get("description"):
-            errors.append(f"{path.relative_to(ROOT)}: description is required")
-        if "tools" in frontmatter:
-            errors.append(f"{path.relative_to(ROOT)}: omit tools to use Copilot defaults")
+        if not frontmatter.get("name") or not frontmatter.get("description"):
+            errors.append(f"{path.relative_to(ROOT)}: name and description are required")
+
     skill_names: set[str] = set()
     for path in (ROOT / ".github/skills").glob("*/SKILL.md"):
         frontmatter = _frontmatter(path, errors)
         name = frontmatter.get("name")
-        if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9-]{1,64}", name):
+        if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9-]{1,64}", name):
             errors.append(f"{path.relative_to(ROOT)}: invalid skill name")
-        elif name in skill_names:
+            continue
+        if name in skill_names:
             errors.append(f"duplicate skill name: {name}")
-        skill_names.add(str(name))
+        skill_names.add(name)
         if not frontmatter.get("description"):
             errors.append(f"{path.relative_to(ROOT)}: description is required")
+
     expected_skills = {
         "analytics-report-generation",
-        "osi-semantic-builder",
-        "snowflake-environment-setup",
-        "snowflake-readonly-query",
-        "result-validation",
+        "osi-semantic-model-builder",
+        "snowflake-analysis",
     }
     errors.extend(f"missing skill: {name}" for name in sorted(expected_skills - skill_names))
-    errors.extend(f"unexpected skill: {name}" for name in sorted(skill_names - expected_skills))
-    for removed in [".env.example", "knowledge", "evals"]:
-        if (ROOT / removed).exists():
-            errors.append(f"deferred or conflicting artifact still exists: {removed}")
-    config_source = (ROOT / "data_agent/config.py").read_text(encoding="utf-8")
-    if "from_env" in config_source or "SNOWFLAKE_ACCOUNT" in config_source:
-        errors.append("environment-variable Snowflake configuration is still enabled")
-    cli_source = (ROOT / "data_agent/cli.py").read_text(encoding="utf-8")
-    tool_docs = (ROOT / "docs/TOOLS.md").read_text(encoding="utf-8")
-    expected_commands = {
-        "cancel-query",
-        "config-check",
-        "connection-check",
-        "describe-object",
-        "execute-readonly",
-        "ir-to-osi",
-        "memory-propose",
-        "osi-compile",
-        "osi-search",
-        "osi-validate",
-        "powerbi-extract",
-        "profile-table",
-        "render-chart",
-        "render-report",
-        "sample-values",
-        "search-objects",
-        "semantic-diff",
-        "semantic-convert",
-        "tableau-extract",
-        "validate-result",
-        "validate-sql",
-    }
-    for command in sorted(expected_commands):
-        if f'"{command}"' not in cli_source:
-            errors.append(f"CLI command missing: {command}")
-        if f"`{command}`" not in tool_docs:
-            errors.append(f"tool command undocumented: {command}")
+
     try:
         json.loads((ROOT / "semantic/schemas/osi-0.2.0.dev0.schema.json").read_text())
+        json.loads((ROOT / "examples/analysis/sales-by-region.json").read_text())
+        yaml.safe_load((ROOT / "snowflake_config.example.yaml").read_text())
     except Exception as exc:
-        errors.append(f"invalid vendored schema: {exc}")
+        errors.append(f"invalid JSON/YAML project artifact: {exc}")
+
+    legacy_term = "enter" + "prise"
+    for path in ROOT.rglob("*"):
+        if (
+            not path.is_file()
+            or ".git" in path.parts
+            or ".venv" in path.parts
+            or path.name == "uv.lock"
+            or path.suffix.lower() not in {".md", ".py", ".yaml", ".yml", ".toml", ".json"}
+        ):
+            continue
+        if re.search(
+            rf"\b{legacy_term}\w*\b", path.read_text(encoding="utf-8"), re.IGNORECASE
+        ):
+            errors.append(f"legacy positioning remains: {path.relative_to(ROOT)}")
+
     if errors:
         print("\n".join(f"ERROR: {error}" for error in errors))
         return 1

@@ -34,7 +34,7 @@ class Settings:
             raise ValueError("Snowflake configuration must be a YAML object")
         sf = _mapping(raw.get("snowflake"), "snowflake")
         limits = _mapping(raw.get("limits", {}), "limits")
-        policy = _mapping(raw.get("policy", {}), "policy")
+        access = _mapping(raw.get("access", {}), "access")
         return cls(
             account=_optional_string(sf.get("account")),
             user=_optional_string(sf.get("user")),
@@ -43,13 +43,13 @@ class Settings:
             warehouse=str(sf.get("warehouse", "DATA_AGENT_WH")),
             database=_optional_string(sf.get("database")),
             schema=_optional_string(sf.get("schema")),
-            query_tag=str(sf.get("query_tag", "enterprise_data_agent")),
+            query_tag=str(sf.get("query_tag", "copilot_data_agent")),
             max_rows=_config_positive_int(limits, "max_rows", 5000),
             max_bytes=_config_positive_int(limits, "max_result_bytes", 5_000_000),
             timeout_seconds=_config_positive_int(limits, "timeout_seconds", 60),
-            blocked_schemas=tuple(str(v).upper() for v in policy.get("blocked_schemas", [])),
-            allowed_objects=tuple(str(v).upper() for v in policy.get("allowed_objects", [])),
-            allow_sensitive_sampling=bool(policy.get("allow_sensitive_sampling", False)),
+            blocked_schemas=tuple(str(v).upper() for v in access.get("blocked_schemas", [])),
+            allowed_objects=tuple(str(v).upper() for v in access.get("allowed_objects", [])),
+            allow_sensitive_sampling=bool(access.get("allow_sensitive_sampling", False)),
         )
 
     def readiness_errors(self) -> list[str]:

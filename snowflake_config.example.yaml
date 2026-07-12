@@ -1,0 +1,23 @@
+# Copy this file to snowflake_config.yaml and fill in the non-secret connection context.
+# Browser SSO opens the identity-provider login locally. Do not add passwords or tokens.
+snowflake:
+  account: "REPLACE_WITH_ORG_ACCOUNT"
+  user: "REPLACE_WITH_USERNAME"
+  authenticator: "externalbrowser"
+  role: "DATA_AGENT_READONLY"
+  warehouse: "DATA_AGENT_WH"
+  database: "REPLACE_WITH_DATABASE"
+  schema: "REPLACE_WITH_SCHEMA"
+  query_tag: "copilot_data_agent"
+
+limits:
+  max_rows: 5000
+  max_result_bytes: 5000000
+  timeout_seconds: 60
+
+access:
+  blocked_schemas:
+    - "SNOWFLAKE.ACCOUNT_USAGE"
+    - "RAW_PII"
+  allowed_objects: []
+  allow_sensitive_sampling: false

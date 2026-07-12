@@ -15,7 +15,7 @@ _QUALIFIED_OBJECT = re.compile(
     r"^[A-Za-z_][A-Za-z0-9_$]*\.[A-Za-z_][A-Za-z0-9_$]*\.[A-Za-z_][A-Za-z0-9_$]*$"
 )
 _SENSITIVE_NAME = re.compile(
-    r"(?i)(email|phone|address|ssn|social_security|tax_id|birth|dob|password|token|secret|name)"
+    r"(?i)(?:^|_)(?:email|phone|address|ssn|social_security|tax_id|birth|dob|password|token|secret|first_name|last_name|full_name)(?:$|_)"
 )
 
 
@@ -89,7 +89,7 @@ def connection_check(request: dict[str, Any]) -> dict[str, Any]:
     if str(actual["role"]).upper() != settings.role.upper():
         return envelope(
             request,
-            "policy_failure",
+            "context_mismatch",
             query_id=query_id,
             actual_context=actual,
             warnings=["effective role differs from configured role"],
@@ -160,9 +160,9 @@ LIMIT 200"""
 
 def describe_object(request: dict[str, Any]) -> dict[str, Any]:
     settings = load_settings(request)
-    database, schema, name = _qualified_parts(require_string(request, "object"))
-    if settings.database and database.upper() != settings.database.upper():
-        raise ContractError("object database must match the configured database")
+    object_name = require_string(request, "object")
+    _validate_requested_object(object_name, settings)
+    database, schema, name = _qualified_parts(object_name)
     sql = f"""SELECT TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME,
 ORDINAL_POSITION, DATA_TYPE, IS_NULLABLE, COMMENT
 FROM {database}.INFORMATION_SCHEMA.COLUMNS
@@ -181,12 +181,12 @@ LIMIT 500"""
 def sample_values(request: dict[str, Any]) -> dict[str, Any]:
     settings = load_settings(request)
     object_name = require_string(request, "object")
-    _qualified_parts(object_name)
+    _validate_requested_object(object_name, settings)
     column = _identifier(require_string(request, "column"), "column")
     if _SENSITIVE_NAME.search(column) and not (
         settings.allow_sensitive_sampling and request.get("sensitive_authorized") is True
     ):
-        raise ContractError("sensitive-looking column sampling is not authorized by policy")
+        raise ContractError("sensitive-looking column sampling is not enabled in configuration")
     limit = min(max(int(request.get("limit", 20)), 1), 100)
     sql = (
         f"SELECT {column} AS SAMPLE_VALUE, COUNT({column}) AS VALUE_COUNT "
@@ -201,10 +201,10 @@ def sample_values(request: dict[str, Any]) -> dict[str, Any]:
 def profile_table(request: dict[str, Any]) -> dict[str, Any]:
     settings = load_settings(request)
     object_name = require_string(request, "object")
-    _qualified_parts(object_name)
+    _validate_requested_object(object_name, settings)
     columns = request.get("columns", [])
     if not isinstance(columns, list) or not columns or len(columns) > 20:
-        raise ContractError("columns must contain 1 to 20 approved column names")
+        raise ContractError("columns must contain 1 to 20 selected column names")
     safe_columns = [_identifier(str(column), "column") for column in columns]
     expressions = ["COUNT(1) AS ROW_COUNT"]
     for column in safe_columns:
@@ -278,6 +278,14 @@ def _qualified_parts(value: str) -> tuple[str, str, str]:
         raise ContractError("object must be DATABASE.SCHEMA.OBJECT using unquoted identifiers")
     database, schema, name = value.split(".")
     return database, schema, name
+
+
+def _validate_requested_object(value: str, settings: Settings) -> None:
+    database, _, _ = _qualified_parts(value)
+    if settings.database and database.upper() != settings.database.upper():
+        raise ContractError("object database must match the configured database")
+    if settings.allowed_objects and value.upper() not in settings.allowed_objects:
+        raise ContractError("object is not included in configured allowed_objects")
 
 
 def params_to_tuple(value: list[Any] | dict[str, Any]) -> Any:

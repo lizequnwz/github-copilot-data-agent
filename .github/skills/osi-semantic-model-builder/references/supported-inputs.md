@@ -1,0 +1,49 @@
+# Supported inputs
+
+## Power BI
+
+Provide an unpacked PBIP/TMDL directory. The extractor reads tables, columns, keys,
+relationships, and simple DAX aggregates. It preserves complex DAX and unsupported constructs as
+review items. If physical sources are absent, pass a source map such as:
+
+```json
+{"Orders": "DEMO.ANALYTICS.ORDERS", "Customers": "DEMO.ANALYTICS.CUSTOMERS"}
+```
+
+## Tableau
+
+Provide a `.twb` workbook or `.tds` datasource. A `.tde` is binary and must have a same-named
+`.tds` sibling or an explicit `--descriptor`. Use a source map for the target Snowflake relation
+and a field map when Tableau display names differ from SQL aliases:
+
+```json
+{
+  "World Indicators": {
+    "Birth Rate": "birth_rate",
+    "CO2 Emissions": "co2_emissions"
+  }
+}
+```
+
+Field-map values must be unquoted identifiers. Expose spaced or quoted source columns through a
+view with simple aliases.
+
+## Generic JSON or YAML
+
+Use a top-level `datasets` or `tables` array. Datasets may contain `fields`/`columns`,
+`metrics`/`measures`, `source`, `primary_key`, and `unique_keys`. Top-level relationships and
+metrics are also accepted. Supplied normalized SQL expressions are retained.
+
+## Neutral IR and existing Ossie
+
+Neutral IR requires `ir_version` and `datasets`. Existing Ossie requires `version` and
+`semantic_model`. Both pass through schema validation and produce a conversion manifest.
+
+## Translation states
+
+- `exact`: direct structural or aggregate translation.
+- `equivalent-with-assumptions`: usable mapping with a recorded assumption.
+- `partial`: only part of the source behavior is represented.
+- `unsupported`: preserved but not emitted as an executable core expression.
+- `requires-human-review`: evidence is insufficient for a usable expression.
+

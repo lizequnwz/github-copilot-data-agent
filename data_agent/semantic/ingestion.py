@@ -7,7 +7,7 @@ from typing import Any
 from data_agent.io import ContractError, envelope
 
 OSI_VERSION = "0.2.0.dev0"
-EXTENSION_VENDOR = "ENTERPRISE_DATA_AGENT"
+EXTENSION_VENDOR = "DATA_AGENT"
 TRANSLATION_STATES = {
     "exact",
     "equivalent-with-assumptions",
@@ -42,7 +42,7 @@ def build_osi_from_ir(ir: dict[str, Any], model_name: str | None = None) -> tupl
     custom extensions. Only reviewed/translated SQL expressions enter the core model.
     """
 
-    name = _slug(model_name or ir.get("model_name") or ir.get("source_artifact"), "candidate_model")
+    name = _slug(model_name or ir.get("model_name") or ir.get("source_artifact"), "generated_model")
     issues: list[dict[str, Any]] = []
     datasets: list[dict[str, Any]] = []
     dataset_names: set[str] = set()
@@ -69,7 +69,7 @@ def build_osi_from_ir(ir: dict[str, Any], model_name: str | None = None) -> tupl
                     "severity": "blocking",
                     "code": "UNRESOLVED_PHYSICAL_SOURCE",
                     "element": dataset_name,
-                    "message": "Map this dataset to a physical table or view before certification.",
+                    "message": "Map this dataset to a physical table or view before using it for analysis.",
                 }
             )
 
@@ -259,7 +259,7 @@ def build_osi_from_ir(ir: dict[str, Any], model_name: str | None = None) -> tupl
         )
 
     extension = {
-        "lifecycle": "candidate",
+        "lifecycle": "generated",
         "source_type": ir.get("source_type"),
         "source_format": ir.get("source_format"),
         "source_artifact": ir.get("source_artifact"),
@@ -274,7 +274,7 @@ def build_osi_from_ir(ir: dict[str, Any], model_name: str | None = None) -> tupl
                 "name": name,
                 "description": str(
                     ir.get("description")
-                    or "Candidate generated from source semantic metadata; review before certification."
+                    or "Generated from source semantic metadata; review mappings and expressions before use."
                 ),
                 "datasets": datasets,
                 "relationships": relationships,
@@ -296,7 +296,7 @@ def ir_to_osi(request: dict[str, Any]) -> dict[str, Any]:
         request,
         "success",
         osi=document,
-        lifecycle="candidate",
+        lifecycle="generated",
         issues=issues,
         warnings=warnings,
     )

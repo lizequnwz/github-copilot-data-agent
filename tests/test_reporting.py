@@ -40,9 +40,7 @@ class ReportingTests(unittest.TestCase):
                     "caveats": ["Synthetic data"],
                     "metadata": {
                         "title": "Sales report",
-                        "source_tier": "certified_osi",
                         "semantic_model": "demo_sales",
-                        "confidence": "high",
                         "data_freshness": "2026-07-11",
                         "query_id": "offline-fixture",
                         "role": "offline",

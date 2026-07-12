@@ -9,6 +9,8 @@ __pycache__/
 dist/
 build/
 reports/generated/
-memory/pending/*.generated.*
+snowflake_config.yaml
+semantic/generated/*.osi.yaml
+semantic/generated/*.conversion.json
 *.request.json
 *.response.json

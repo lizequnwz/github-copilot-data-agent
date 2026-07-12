@@ -1,90 +1,114 @@
-# GitHub Copilot Data Analytics Agent POC
+# GitHub Copilot Snowflake Data Agent
 
-This repository contains one GitHub Copilot custom agent for semantic-first Snowflake analytics. Its most complete offline workflow converts Power BI, Tableau, neutral semantic IR, generic JSON/YAML, or existing Ossie metadata into validated candidate Apache Ossie models.
+This repository provides one GitHub Copilot agent for answering scoped business questions with
+shared semantic models and read-only Snowflake queries. It also includes an OSI semantic model
+builder that converts exported Power BI, Tableau, JSON, YAML, neutral IR, or existing Apache
+Ossie metadata into models the analysis agent can use.
 
-Apache Ossie was formerly named Open Semantic Interchange (OSI). The user-selected [`open-semantic-interchange/ossie`](https://github.com/open-semantic-interchange/ossie) repository now directs new work to [`apache/ossie`](https://github.com/apache/ossie). This project vendors the `0.2.0.dev0` core schema and records the upstream schema in every conversion manifest.
+## What it solves
 
-## Fastest useful demo
+A user may know the business question but not the correct table, join, or metric expression. The
+agent uses a small OSI model to resolve those details, prepares inspectable Snowflake SQL, runs it
+with browser SSO and a read-only role, checks the result shape, and returns a reproducible answer.
 
-Convert one of the included fixtures:
+Typical request:
 
-```bash
-uv run python scripts/convert_semantic.py tests/fixtures/powerbi --model-name demo_powerbi
-uv run python scripts/convert_semantic.py tests/fixtures/tableau/sales.twb --model-name demo_tableau
-uv run python scripts/convert_semantic.py examples/tableau/world.tds --model-name world_indicators --source-map examples/tableau/world-source-map.example.json --field-map examples/tableau/world-field-map.example.json
-uv run python scripts/convert_semantic.py tests/fixtures/generic/sales.yaml --model-name demo_generic
-```
+> Which regions drove gross sales last month? Use the shared gross sales definition and show the
+> SQL.
 
-Each command writes two reviewable files under `semantic/candidates/`:
+The agent is designed to provide:
 
-- `<name>.osi.yaml`: schema-valid candidate Ossie metadata.
-- `<name>.conversion.json`: source hash, translation summary, issues, and review checklist.
+- consistent metric and dimension definitions from `semantic/models/`
+- explicit, bounded, read-only Snowflake queries
+- result checks before interpretation
+- direct answers with query details and useful caveats
+- optional charts and self-contained HTML reports
+- BI-to-OSI conversion for building and refreshing semantic models
 
-For real PBIP/TMDL models whose physical tables cannot be inferred, provide a JSON source map:
+## Try the offline walkthrough
 
-```json
-{
-  "Orders": "PROD.ANALYTICS.ORDERS",
-  "Customers": "PROD.ANALYTICS.CUSTOMERS"
-}
-```
-
-```bash
-uv run python scripts/convert_semantic.py path/to/model --source-map source-map.json
-```
-
-See [Semantic conversion](docs/SEMANTIC_CONVERSION.md) for supported constructs and review states.
-
-Generate an offline HTML report preview:
+Install the base dependencies and run the complete example without Snowflake:
 
 ```bash
-uv run python scripts/render_report_demo.py
+uv sync --extra dev
+uv run python scripts/demo_analysis.py
 ```
 
-## Agent capabilities
+The walkthrough loads `semantic/models/demo_sales.yaml`, compiles a semantic query plan, validates
+the SQL, validates synthetic result rows, and writes
+`reports/generated/demo-sales-analysis.html`.
 
-- `osi-semantic-builder`: detect, extract, convert, validate, and review semantic assets.
-- `analytics-report-generation`: generate accessible Python-rendered SVG charts and self-contained HTML reports.
-- `snowflake-environment-setup`: prepare Python, `uv`, browser SSO, and configuration.
-- `snowflake-readonly-query`: discover metadata and run bounded read-only analysis.
-- `result-validation`: validate analytical result shape and grain before reporting.
+The same example can be run through the typed command directly:
 
-GitHub Copilot discovers [.github/agents/data-analytics.agent.md](.github/agents/data-analytics.agent.md). Repository-wide instructions live in [.github/copilot-instructions.md](.github/copilot-instructions.md), and detailed procedures live in [.github/skills/](.github/skills/).
+```bash
+uv run python -m data_agent analyze \
+  --input examples/analysis/sales-by-region.json \
+  --output /tmp/sales-by-region.response.json
+```
 
-## Project layout
+## Connect to Snowflake
+
+```bash
+cp snowflake_config.example.yaml snowflake_config.yaml
+uv sync --extra dev --extra snowflake
+```
+
+Fill in the non-secret context in the local configuration file, select the `data-analytics`
+Copilot agent, and ask a data question. The agent displays the connection context for confirmation
+before the first connection and uses browser SSO.
+
+See [User workflow](docs/WORKFLOW.md) for example prompts and expected responses.
+
+## Build an OSI model from BI metadata
+
+The `osi-semantic-model-builder` skill is the model onboarding path. Its bundled command detects
+the source, extracts neutral semantic IR, translates supported expressions, validates the OSI
+document, and writes a model plus conversion manifest.
+
+```bash
+# Power BI TMDL
+uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py \
+  tests/fixtures/powerbi --model-name demo_powerbi
+
+# Tableau workbook
+uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py \
+  tests/fixtures/tableau/sales.twb --model-name demo_tableau
+
+# Generic semantic YAML
+uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py \
+  tests/fixtures/generic/sales.yaml --model-name demo_generic
+```
+
+Each command writes `semantic/generated/<model>.osi.yaml` and
+`semantic/generated/<model>.conversion.json`. The manifest shows physical mapping gaps,
+unsupported expressions, and review actions. See [Semantic models](docs/SEMANTIC_MODELS.md) for
+the supported formats and Tableau mapping example.
+
+## Project map
 
 ```text
-.github/                         Copilot agent and five procedural skills
-data_agent/
-  bi/extract.py                  Power BI, Tableau, and generic extractors
-  semantic/                      Ossie model IO, conversion, emission, search, compile
-  reporting/render.py            Python SVG charts and self-contained HTML reports
-  tools/                         Snowflake, result validation, and memory commands
-  cli.py                         typed command dispatcher
-semantic/
-  schemas/                       vendored Ossie schema
-  certified/                     reviewed models used for analysis
-  candidates/                    generated model + manifest pairs
-memory/
-  approved/                      reviewed small business notes
-  pending/                       proposed notes awaiting review
-reports/generated/               local chart/report artifacts
-scripts/                         project validation and semantic conversion entry points
-tests/                           offline fixtures and behavior tests
+.github/agents/                    Copilot data analytics agent
+.github/skills/
+  snowflake-analysis/              Question-to-answer workflow
+  osi-semantic-model-builder/      BI export to OSI workflow and runnable builder
+  analytics-report-generation/    Optional chart and HTML report workflow
+data_agent/                         Local semantic, Snowflake, validation, and report helpers
+semantic/models/                    OSI models searched by the analysis agent
+semantic/generated/                 Replaceable conversion output
+semantic/schemas/                   Vendored Apache Ossie schema
+examples/                           Source mappings and walkthrough inputs
+reports/generated/                  Local generated output
+scripts/                            Friendly example and conversion entry points
 ```
 
-[How `data_agent` works](docs/DATA_AGENT.md) describes the package and execution flow.
-
-## Setup and validation
-
-Use Python 3.11+ and `uv`:
+## Developer commands
 
 ```bash
-uv sync --extra dev --extra snowflake
 uv run python scripts/validate_project.py
 uv run python -m unittest discover -s tests -v
 uv run ruff check .
 uv run mypy data_agent
 ```
 
-Snowflake remains optional for semantic conversion and report rendering. When it is needed, fill in `snowflake_config.yaml`, retain `authenticator: externalbrowser`, and follow [the operating guide](docs/OPERATING_GUIDE.md).
+The Snowflake connector is optional for the offline examples. The implementation and its current
+boundaries are described in [Design](docs/DESIGN.md).

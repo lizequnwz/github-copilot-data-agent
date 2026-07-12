@@ -1,15 +1,15 @@
 version: 0.2.0.dev0
 semantic_model:
   - name: demo_sales
-    description: Synthetic demonstration model; replace with reviewed enterprise semantics.
+    description: Synthetic sales model used by the offline walkthrough.
     ai_context:
-      instructions: Never present this fixture as enterprise production data.
+      instructions: Use only for the local example; the values are synthetic.
       synonyms: [sales demo]
     datasets:
       - name: orders
         source: DEMO.ANALYTICS.ORDERS
         primary_key: [order_id]
-        description: Synthetic order grain, one row per order.
+        description: One synthetic row per order.
         fields:
           - name: order_date
             expression:

@@ -46,15 +46,15 @@ def _sha256_text(text: str) -> str:
 def _slug(value: str) -> str:
     import re
 
-    return re.sub(r"[^a-z0-9]+", "_", value.casefold()).strip("_") or "candidate_model"
+    return re.sub(r"[^a-z0-9]+", "_", value.casefold()).strip("_") or "generated_model"
 
 
-def _candidate_root(request: dict[str, Any]) -> Path:
-    configured = Path(str(request.get("output_dir", "semantic/candidates")))
+def _generated_root(request: dict[str, Any]) -> Path:
+    configured = Path(str(request.get("output_dir", "semantic/generated")))
     root = (ROOT / configured).resolve() if not configured.is_absolute() else configured.resolve()
-    candidates = (ROOT / "semantic/candidates").resolve()
-    if root != candidates and candidates not in root.parents:
-        raise ContractError("output_dir must be semantic/candidates or a subdirectory")
+    generated = (ROOT / "semantic/generated").resolve()
+    if root != generated and generated not in root.parents:
+        raise ContractError("output_dir must be semantic/generated or a subdirectory")
     return root
 
 
@@ -104,7 +104,7 @@ def convert_semantic(request: dict[str, Any]) -> dict[str, Any]:
             f"source_type must be one of: {', '.join(sorted(SUPPORTED_SOURCE_TYPES))}"
         )
     source_type = detect_source_type(source) if requested_type == "auto" else requested_type
-    output_root = _candidate_root(request)
+    output_root = _generated_root(request)
     output_root.mkdir(parents=True, exist_ok=True)
 
     issues: list[dict[str, Any]] = []
@@ -169,10 +169,10 @@ def convert_semantic(request: dict[str, Any]) -> dict[str, Any]:
         "issues": issues,
         "review_checklist": [
             "Resolve every blocking issue and physical source placeholder.",
-            "Review vendor expressions retained in ENTERPRISE_DATA_AGENT extensions.",
+            "Review vendor expressions retained in DATA_AGENT extensions.",
             "Verify primary keys and relationship many-to-one direction.",
             "Compile representative metrics and compare them with the source BI model.",
-            "Move the model to semantic/certified only after human review.",
+            "Copy the model to semantic/models after reviewing mappings and important metrics.",
         ],
     }
     write_json_atomic(manifest_path, manifest)
@@ -180,7 +180,7 @@ def convert_semantic(request: dict[str, Any]) -> dict[str, Any]:
         request,
         "success" if not schema_errors else "invalid",
         source_type=source_type,
-        candidate_path=str(model_path),
+        model_path=str(model_path),
         manifest_path=str(manifest_path),
         schema_valid=not schema_errors,
         issue_count=len(issues),

@@ -1,11 +1,15 @@
 # Semantic models
 
-This folder has three responsibilities:
+- `models/` contains OSI models available to the analysis agent.
+- `generated/` contains replaceable model and manifest pairs created from BI exports.
+- `schemas/` contains the vendored Apache Ossie schema used for offline validation.
 
-- `schemas/`: the vendored Apache Ossie `0.2.0.dev0` JSON Schema used offline.
-- `candidates/`: generated `<name>.osi.yaml` and `<name>.conversion.json` pairs.
-- `certified/`: human-reviewed Ossie models searched by default for analysis.
+Use the `osi-semantic-model-builder` skill or run:
 
-Run `uv run python scripts/convert_semantic.py SOURCE` to create a candidate pair. Candidates can be regenerated and are not trusted analytical definitions. Certification consists of resolving manifest issues, reviewing source expressions and physical mappings, validating keys and relationships, and comparing representative metrics with the source system before copying only the reviewed `.osi.yaml` into `certified/`.
+```bash
+uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py SOURCE \
+  --model-name MODEL
+```
 
-See [the conversion workflow](../docs/SEMANTIC_CONVERSION.md).
+Review generated physical mappings, keys, relationships, and important metric expressions before
+copying a model into `models/`. See [Semantic models](../docs/SEMANTIC_MODELS.md).

@@ -6,20 +6,17 @@ import sys
 from pathlib import Path
 from typing import Any, Callable
 
-from data_agent.bi.extract import extract_powerbi, extract_tableau
+from data_agent.analysis import analyze
 from data_agent.io import ContractError, envelope, read_json, write_json_atomic
 from data_agent.reporting.render import render_chart, render_report
 from data_agent.security.sql import SQLSafetyError, validate_sql
 from data_agent.semantic.compiler import compile_plan
-from data_agent.semantic.conversion import convert_semantic
-from data_agent.semantic.ingestion import ir_to_osi
 from data_agent.semantic.models import (
     SemanticError,
     load_document,
     search_documents,
     validate_document,
 )
-from data_agent.tools.memory import propose
 from data_agent.tools.result_validation import validate_result
 from data_agent.tools.snowflake import (
     cancel_query,
@@ -53,7 +50,7 @@ def handle_osi_validate(request: dict[str, Any]) -> dict[str, Any]:
 
 
 def handle_osi_search(request: dict[str, Any]) -> dict[str, Any]:
-    roots = request.get("roots", ["semantic/certified"])
+    roots = request.get("roots", ["semantic/models"])
     paths = [
         path
         for root in roots
@@ -97,6 +94,7 @@ def _sha(text: str) -> str:
 
 
 HANDLERS: dict[str, Handler] = {
+    "analyze": analyze,
     "config-check": config_check,
     "connection-check": connection_check,
     "execute-readonly": execute_readonly,
@@ -110,19 +108,14 @@ HANDLERS: dict[str, Handler] = {
     "osi-search": handle_osi_search,
     "osi-compile": handle_osi_compile,
     "semantic-diff": handle_semantic_diff,
-    "powerbi-extract": extract_powerbi,
-    "tableau-extract": extract_tableau,
-    "ir-to-osi": ir_to_osi,
-    "semantic-convert": convert_semantic,
     "validate-result": validate_result,
     "render-chart": render_chart,
     "render-report": render_report,
-    "memory-propose": propose,
 }
 
 
 def parser() -> argparse.ArgumentParser:
-    result = argparse.ArgumentParser(description="Enterprise data agent typed tool CLI")
+    result = argparse.ArgumentParser(description="Snowflake data agent local command runner")
     result.add_argument("command", choices=sorted(HANDLERS))
     result.add_argument("--input", required=True, help="JSON request path")
     result.add_argument("--output", required=True, help="JSON response path")
@@ -138,7 +131,13 @@ def main(argv: list[str] | None = None) -> int:
         exit_code = (
             0
             if response.get("status")
-            not in {"invalid", "fail", "policy_failure", "configuration_required"}
+            not in {
+                "invalid",
+                "fail",
+                "context_mismatch",
+                "configuration_required",
+                "validation_failed",
+            }
             else 2
         )
     except (ContractError, SQLSafetyError, SemanticError, ValueError, OSError) as exc:
@@ -151,7 +150,7 @@ def main(argv: list[str] | None = None) -> int:
             request,
             "error",
             error_type="InternalError",
-            message="tool failed; inspect approved local diagnostics",
+            message="tool failed; inspect local diagnostics",
             warnings=[],
         )
         print(f"{type(exc).__name__}: {exc}", file=sys.stderr)

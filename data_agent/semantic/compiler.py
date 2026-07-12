@@ -89,7 +89,7 @@ def compile_plan(document: dict[str, Any], plan: dict[str, Any]) -> dict[str, An
             joined.add(target)
             progress = True
         if not progress:
-            raise SemanticError("no governed join path connects all referenced datasets")
+            raise SemanticError("no model-defined join path connects all referenced datasets")
 
     select_parts = [
         f"{_snowflake_expression(field)} AS {field['name']}" for _, _, field in selected_fields
@@ -106,7 +106,7 @@ def compile_plan(document: dict[str, Any], plan: dict[str, Any]) -> dict[str, An
             or item.get("field") not in fields
             or item.get("operator") not in {"=", "!=", ">", ">=", "<", "<="}
         ):
-            raise SemanticError("filter must use a governed field and supported operator")
+            raise SemanticError("filter must use a model-defined field and supported operator")
         _, field = fields[item["field"]]
         where_parts.append(f"{_snowflake_expression(field)} {item['operator']} %s")
         parameters.append(item.get("value"))

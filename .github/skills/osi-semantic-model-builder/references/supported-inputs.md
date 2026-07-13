@@ -12,9 +12,14 @@ review items. If physical sources are absent, pass a source map such as:
 
 ## Tableau
 
-Provide a `.twb` workbook or `.tds` datasource. A `.tde` is binary and must have a same-named
-`.tds` sibling or an explicit `--descriptor`. Use a source map for the target Snowflake relation
-and a field map when Tableau display names differ from SQL aliases:
+Default to a `.tds` datasource when one is available; it is the normal semantic input and carries
+the datasource fields, aggregations, calculations, and connection metadata. Use
+`examples/tableau/world.tds` as the working example. A `.twb` workbook is also supported when the
+workbook is the available source. A `.tde` is binary and must have a same-named `.tds` sibling or
+an explicit `--descriptor`.
+
+Use a source map for the real target Snowflake relation and a field map when Tableau display names
+differ from SQL aliases:
 
 ```json
 {
@@ -26,7 +31,8 @@ and a field map when Tableau display names differ from SQL aliases:
 ```
 
 Field-map values must be unquoted identifiers. Expose spaced or quoted source columns through a
-view with simple aliases.
+view with simple aliases. Treat `REPLACE_WITH_DATABASE...` source values as blocking placeholders,
+not usable mappings.
 
 ## Generic JSON or YAML
 
@@ -46,4 +52,3 @@ Neutral IR requires `ir_version` and `datasets`. Existing Ossie requires `versio
 - `partial`: only part of the source behavior is represented.
 - `unsupported`: preserved but not emitted as an executable core expression.
 - `requires-human-review`: evidence is insufficient for a usable expression.
-

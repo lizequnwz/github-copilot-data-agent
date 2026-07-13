@@ -1,5 +1,32 @@
 # User workflow
 
+The recommended entry point is the repository's `data-analytics` GitHub Copilot agent. The local
+Python commands are its deterministic execution layer and are also useful for testing and
+automation.
+
+## Start here
+
+Run the offline walkthrough before connecting to Snowflake:
+
+```bash
+uv sync --extra dev
+uv run python scripts/demo_analysis.py
+```
+
+This uses the synthetic `demo_sales` model and writes
+`reports/generated/demo-sales-analysis.html`. It does not connect to Snowflake.
+
+To trigger the conversational workflow:
+
+- In VS Code, open this repository, open Copilot Chat, and select `data-analytics` from the agents
+  dropdown.
+- In GitHub Copilot CLI, use `/agent` and select `data-analytics`, or start a request with
+  `copilot --agent=data-analytics --prompt "..."`.
+
+The agent selects the smallest relevant skill automatically: `snowflake-analysis` for data
+questions, `osi-semantic-model-builder` for semantic onboarding, and
+`analytics-report-generation` for an explicitly requested chart or report.
+
 ## Ask a data question
 
 Select the `data-analytics` Copilot agent and provide the business question in ordinary language:
@@ -55,8 +82,9 @@ Example prompts:
 
 > Convert this unpacked Power BI TMDL directory into an OSI model and show me what needs review.
 
-> Build an OSI model from this Tableau datasource. Use these source and field maps, then summarize
-> translated and unsupported calculations.
+> Build an OSI model from this Tableau `.tds` datasource. Map it to the real Snowflake source, use
+> the provided field map, then summarize translated calculations, unsupported calculations, and
+> blocking review items.
 
 > Refresh the generated model from this updated BI export and compare the manifest with the last
 > conversion.
@@ -64,6 +92,35 @@ Example prompts:
 The `osi-semantic-model-builder` writes replaceable files to `semantic/generated/`. Review the
 manifest, correct source maps when needed, and rerun the builder. Copy the reviewed OSI YAML into
 `semantic/models/` to make it available to analysis.
+
+### Normal Tableau path: `.tds`
+
+Most Tableau semantic onboarding should begin with the `.tds` datasource because it carries the
+datasource fields, default aggregations, calculations, and connection metadata needed for model
+conversion. Use `examples/tableau/world.tds` and its mapping files as the working shape:
+
+```bash
+uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py \
+  examples/tableau/world.tds --model-name world_indicators \
+  --source-map examples/tableau/world-source-map.demo.json \
+  --field-map examples/tableau/world-field-map.example.json
+```
+
+For a real datasource:
+
+1. Copy `examples/tableau/world-source-map.example.json` and replace the placeholder with the real
+   `DATABASE.SCHEMA.TABLE_OR_VIEW`.
+2. Create or adapt a field map when Tableau display names do not match simple unquoted Snowflake
+   column aliases.
+3. Run the builder and open `semantic/generated/<model>.conversion.json` first.
+4. Resolve physical-source blockers, then review keys, relationships, important fields, and metric
+   expressions in `<model>.osi.yaml`.
+5. Rerun after correcting mappings. Copy the reviewed YAML into `semantic/models/` only when it is
+   ready for analysis.
+
+A `.twb` workbook is also supported when workbook-level metadata is the source. A binary `.tde`
+cannot provide the semantic definition by itself; it requires a matching `.tds` descriptor or an
+explicit `--descriptor` path.
 
 ## Request a report
 
@@ -73,4 +130,3 @@ Start with a validated analytical result, then ask:
 
 Reports are written under `reports/generated/`. Query details are included when the result came
 from Snowflake; offline examples use clearly labeled synthetic details.
-

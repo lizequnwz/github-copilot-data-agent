@@ -11,7 +11,9 @@ source identifiers, physical mappings, and any translation gaps.
 ## Choose the input path
 
 - Power BI: use an unpacked PBIP/TMDL directory. Binary `.pbix` files must be exported first.
-- Tableau: use `.twb` or `.tds`; a `.tde` requires a matching `.tds` descriptor.
+- Tableau: default to a `.tds` datasource when it is available, using
+  `examples/tableau/world.tds` as the working shape. Use `.twb` for workbook-level metadata. A
+  `.tde` requires a matching `.tds` descriptor and is not a semantic source by itself.
 - Generic: use JSON or YAML containing datasets/tables, fields, metrics, and relationships.
 - Neutral IR or Ossie: pass the JSON/YAML file directly.
 
@@ -23,8 +25,10 @@ commands and expected artifacts.
 
 1. Identify the source path, desired model name, and intended Snowflake tables or views.
 2. Detect the format unless the user supplied `--source-type`.
-3. Create a JSON source map when the BI export does not resolve physical tables. For Tableau,
-   create a field map when display names do not match unquoted Snowflake column aliases.
+3. Create a JSON source map when the BI export does not resolve physical tables. For a Tableau
+   `.tds`, map each datasource to a real Snowflake table or view and create a field map when display
+   names do not match unquoted Snowflake column aliases. Use the mapping files under
+   `examples/tableau/` as templates, but do not accept placeholder source values as usable output.
 4. Run the bundled builder from the repository root:
 
    ```bash
@@ -53,4 +57,3 @@ commands and expected artifacts.
 Return the generated model and manifest paths, detected source type, schema status, dataset/field/
 relationship/metric counts, preserved expressions, blockers, assumptions, and the next concrete
 review action. A schema-valid file can still require mapping or calculation review.
-

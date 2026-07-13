@@ -29,7 +29,7 @@ constructs, and a source snapshot hash before OSI emission.
 | Input | Current extraction |
 |---|---|
 | Power BI PBIP/TMDL directory | Tables, fields, keys, relationships, simple DAX aggregates, source expressions |
-| Tableau `.twb` or `.tds` | Datasources, fields, physical source, simple aggregates, calculation review items |
+| Tableau `.tds` (normal path) or `.twb` | Datasources, fields, physical source, simple aggregates, calculation review items |
 | Tableau `.tde` with `.tds` | Descriptor semantics plus a snapshot hash covering both files |
 | Generic JSON/YAML | Datasets, fields, metrics, relationships, keys, and descriptions |
 | Neutral semantic IR | Direct OSI emission |

@@ -25,6 +25,28 @@ The agent is designed to provide:
 - optional charts and self-contained HTML reports
 - BI-to-OSI conversion for building and refreshing semantic models
 
+## How to use it
+
+1. Open this repository in a GitHub Copilot-supported environment and select the
+   `data-analytics` agent.
+2. Ask a scoped business question with the metric, population, dimensions, filters, time range,
+   and desired output.
+3. Confirm the displayed non-secret Snowflake context before the first connection. The agent then
+   uses browser SSO, validated read-only SQL, bounded execution, and result checks.
+4. Ask for a chart or self-contained HTML report only after the analytical result is validated.
+
+Example trigger:
+
+> Compare gross sales by region for the last two complete calendar months. Use the shared
+> definition, include only completed orders, explain any assumptions, and show the SQL.
+
+If the required model is not yet in `semantic/models/`, first ask the agent to convert and review
+the BI semantic export. For Tableau, the normal input is a `.tds` datasource like
+`examples/tableau/world.tds`, together with a source map and, when needed, a field map.
+
+See [User workflow](docs/WORKFLOW.md) for first-time setup, trigger options, prompt templates, the
+Tableau `.tds` onboarding path, and expected responses.
+
 ## Try the offline walkthrough
 
 Install the base dependencies and run the complete example without Snowflake:
@@ -57,8 +79,6 @@ Fill in the non-secret context in the local configuration file, select the `data
 Copilot agent, and ask a data question. The agent displays the connection context for confirmation
 before the first connection and uses browser SSO.
 
-See [User workflow](docs/WORKFLOW.md) for example prompts and expected responses.
-
 ## Build an OSI model from BI metadata
 
 The `osi-semantic-model-builder` skill is the model onboarding path. Its bundled command detects
@@ -70,9 +90,11 @@ document, and writes a model plus conversion manifest.
 uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py \
   tests/fixtures/powerbi --model-name demo_powerbi
 
-# Tableau workbook
+# Tableau .tds datasource (the normal Tableau semantic input)
 uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py \
-  tests/fixtures/tableau/sales.twb --model-name demo_tableau
+  examples/tableau/world.tds --model-name world_indicators \
+  --source-map examples/tableau/world-source-map.demo.json \
+  --field-map examples/tableau/world-field-map.example.json
 
 # Generic semantic YAML
 uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py \

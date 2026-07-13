@@ -1,0 +1,11 @@
+{
+  "pid": 91082,
+  "port": 5363,
+  "httpUrl": "http://127.0.0.1:5363/",
+  "url": "https://Mac.local:5363/",
+  "localHttpUrl": "http://localhost:5363/",
+  "localUrl": "https://localhost:5363/",
+  "lanHttpUrl": "http://Mac.local:5363/",
+  "displayRoot": "ppt",
+  "startedAt": "2026-07-13T01:00:03.640Z"
+}

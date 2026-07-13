@@ -1,0 +1,34 @@
+{
+  "title": "GitHub Copilot Snowflake Data Agent",
+  "goal": "Comprehensive developer walkthrough of the refactored data agent, its business purpose, agent design, instructions, tools, skills, semantic model onboarding, analysis workflow, examples, boundaries, and adoption path",
+  "themePack": "theme03",
+  "pageCount": 16,
+  "part": {
+    "index": 1,
+    "total": 4,
+    "startSlide": 1,
+    "endSlide": 5
+  },
+  "slides": [
+    {
+      "layout": "theme03_page001",
+      "props": {}
+    },
+    {
+      "layout": "theme03_page039",
+      "props": {}
+    },
+    {
+      "layout": "theme03_page077",
+      "props": {}
+    },
+    {
+      "layout": "theme03_page053",
+      "props": {}
+    },
+    {
+      "layout": "theme03_page066",
+      "props": {}
+    }
+  ]
+}

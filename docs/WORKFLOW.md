@@ -89,9 +89,10 @@ Example prompts:
 > Refresh the generated model from this updated BI export and compare the manifest with the last
 > conversion.
 
-The `osi-semantic-model-builder` writes replaceable files to `semantic/generated/`. Review the
-manifest, correct source maps when needed, and rerun the builder. Copy the reviewed OSI YAML into
-`semantic/models/` to make it available to analysis.
+The `osi-semantic-model-builder` first writes a deterministic raw OSI file and conversion manifest
+to `semantic/generated/`. Review those artifacts, create the audited JSON patch described by the
+skill, and rerun the builder with `--review-patch`. Python applies and validates the patch; clean
+models are promoted automatically to `semantic/models/`.
 
 ### Normal Tableau path: `.tds`
 
@@ -112,11 +113,16 @@ For a real datasource:
    `DATABASE.SCHEMA.TABLE_OR_VIEW`.
 2. Create or adapt a field map when Tableau display names do not match simple unquoted Snowflake
    column aliases.
-3. Run the builder and open `semantic/generated/<model>.conversion.json` first.
-4. Resolve physical-source blockers, then review keys, relationships, important fields, and metric
-   expressions in `<model>.osi.yaml`.
-5. Rerun after correcting mappings. Copy the reviewed YAML into `semantic/models/` only when it is
-   ready for analysis.
+3. Run the builder and open `<model>.conversion.json` and `<model>.raw.osi.yaml` first.
+4. Resolve physical-source blockers, then review keys, relationships, important fields, metric
+   expressions, descriptions, and `ai_context`.
+5. Write `<model>.review.patch.json` with evidence, confidence, and assumptions for each change.
+6. Rerun with `--review-patch PATH`. The reviewed `<model>.osi.yaml` is promoted only when official
+   and readiness validation pass with no unresolved assumptions.
+
+Snowflake evidence is optional. When requested, confirm the displayed non-secret context first and
+add `--verify-snowflake --configuration-confirmed`; failed or partial verification prevents
+promotion for that run while preserving the raw artifact.
 
 A `.twb` workbook is also supported when workbook-level metadata is the source. A binary `.tde`
 cannot provide the semantic definition by itself; it requires a matching `.tds` descriptor or an

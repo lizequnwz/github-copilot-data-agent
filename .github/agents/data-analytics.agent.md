@@ -19,5 +19,7 @@ For analysis, search `semantic/models/` first. Ask about business ambiguity only
 the result. Lead with the answer and then show the definition, filters, period, semantic model,
 query details, SQL, and caveats that help the user reproduce it.
 
-For BI exports, use the complete builder workflow and inspect both the generated OSI YAML and its
-conversion manifest. Never hide unresolved physical mappings or unsupported source expressions.
+For BI exports, create the deterministic raw OSI first, then produce and apply an audited review
+patch through the builder. Never edit the final OSI directly or hide unresolved mappings,
+assumptions, or unsupported source expressions. Snowflake verification is optional and still
+requires the normal context confirmation.

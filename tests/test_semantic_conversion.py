@@ -14,11 +14,11 @@ from data_agent.semantic.conversion import convert_semantic, detect_source_type
 from data_agent.semantic.compiler import compile_plan
 from data_agent.semantic.ingestion import build_osi_from_ir
 from data_agent.semantic.models import validate_document
+from data_agent.semantic.ossie import SCHEMA
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "tests/fixtures"
 EXAMPLES = ROOT / "examples"
-SCHEMA = ROOT / "semantic/schemas/osi-0.2.0.dev0.schema.json"
 
 
 class SemanticConversionTests(unittest.TestCase):
@@ -29,15 +29,37 @@ class SemanticConversionTests(unittest.TestCase):
         self.assertEqual(detect_source_type(FIXTURES / "generic/sales.yaml"), "generic")
 
     def test_powerbi_extracts_fields_metric_and_relationship(self) -> None:
-        ir = extract_powerbi_ir(
-            {"request_id": "pbi", "source_path": str(FIXTURES / "powerbi")}
-        )
+        ir = extract_powerbi_ir({"request_id": "pbi", "source_path": str(FIXTURES / "powerbi")})
         self.assertEqual(len(ir["datasets"]), 2)
         self.assertEqual(len(ir["relationships"]), 1)
         self.assertEqual(ir["metrics"][0]["normalized_expression"], "SUM(orders.sales_amount)")
+        orders = next(dataset for dataset in ir["datasets"] if dataset["name"] == "Orders")
+        self.assertEqual(orders["description"], "Orders used for booked-sales analysis")
+        sales_amount = next(field for field in orders["fields"] if field["name"] == "SalesAmount")
+        self.assertEqual(sales_amount["description"], "Booked sales amount")
+        self.assertEqual(sales_amount["label"], "Sales")
+        margin = next(field for field in orders["fields"] if field["name"] == "Margin")
+        self.assertEqual(
+            margin["source_expression"],
+            {"language": "DAX", "value": "[SalesAmount] * 0.1"},
+        )
         document, issues = build_osi_from_ir(ir, "powerbi_sales")
         self.assertEqual(validate_document(document, SCHEMA), [])
         self.assertFalse([issue for issue in issues if issue["severity"] == "blocking"])
+        emitted_orders = next(
+            dataset
+            for dataset in document["semantic_model"][0]["datasets"]
+            if dataset["name"] == "orders"
+        )
+        self.assertNotIn("margin", {field["name"] for field in emitted_orders["fields"]})
+        provenance = json.loads(document["semantic_model"][0]["custom_extensions"][0]["data"])
+        self.assertTrue(
+            any(
+                item.get("field") == "Orders.Margin"
+                and item.get("source_expression") == "[SalesAmount] * 0.1"
+                for item in provenance["unsupported"]
+            )
+        )
         compiled = compile_plan(
             document,
             {
@@ -60,6 +82,15 @@ class SemanticConversionTests(unittest.TestCase):
         self.assertEqual(ir["metrics"][0]["normalized_expression"], "SUM(sales.sales_amount)")
         document, _ = build_osi_from_ir(ir, "tableau_sales")
         self.assertEqual(validate_document(document, SCHEMA), [])
+        fields = {
+            field["name"]: field for field in document["semantic_model"][0]["datasets"][0]["fields"]
+        }
+        self.assertEqual(
+            fields["total_sales"]["expression"]["dialects"],
+            [{"dialect": "TABLEAU", "expression": "SUM([Sales Amount])"}],
+        )
+        metric_dialects = document["semantic_model"][0]["metrics"][0]["expression"]["dialects"]
+        self.assertEqual([item["dialect"] for item in metric_dialects], ["ANSI_SQL", "TABLEAU"])
 
     def test_tableau_tds_extracts_default_aggregations_and_metadata_fields(self) -> None:
         ir = extract_tableau_ir(
@@ -86,6 +117,18 @@ class SemanticConversionTests(unittest.TestCase):
         document, issues = build_osi_from_ir(ir, "world_indicators")
         self.assertEqual(validate_document(document, SCHEMA), [])
         self.assertFalse([issue for issue in issues if issue["severity"] == "blocking"])
+        emitted_fields = {
+            field["name"]: field for field in document["semantic_model"][0]["datasets"][0]["fields"]
+        }
+        self.assertEqual(emitted_fields["birth_rate"]["description"], "% of population")
+        self.assertEqual(emitted_fields["birth_rate"]["label"], "Population")
+        self.assertEqual(emitted_fields["birth_rate"]["ai_context"]["synonyms"], ["Birth Rate"])
+        all_dialects = {
+            dialect["dialect"]
+            for item in emitted_fields.values()
+            for dialect in item["expression"]["dialects"]
+        }
+        self.assertNotIn("SNOWFLAKE", all_dialects)
         compiled = compile_plan(
             document,
             {
@@ -151,9 +194,7 @@ class SemanticConversionTests(unittest.TestCase):
                     "request_id": "world-convert",
                     "source_path": str(EXAMPLES / "tableau/world.tds"),
                     "model_name": "world_indicators",
-                    "source_map": {
-                        "World Indicators": "DEMO.ANALYTICS.WORLD_INDICATORS"
-                    },
+                    "source_map": {"World Indicators": "DEMO.ANALYTICS.WORLD_INDICATORS"},
                     "field_map": {"World Indicators": {"CO2 Emissions": "co2_tonnes"}},
                     "output_dir": directory,
                 }
@@ -164,7 +205,9 @@ class SemanticConversionTests(unittest.TestCase):
             self.assertEqual(validate_document(generated, SCHEMA), [])
             self.assertTrue(manifest["osi"]["schema_valid"])
             self.assertEqual(manifest["summary"]["metrics"], 24)
-            self.assertEqual(generated["semantic_model"][0]["metrics"][0]["name"], "average_birth_rate")
+            self.assertEqual(
+                generated["semantic_model"][0]["metrics"][0]["name"], "average_birth_rate"
+            )
 
     def test_tableau_placeholder_source_map_remains_blocking(self) -> None:
         with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:

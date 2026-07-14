@@ -20,8 +20,8 @@ Snowflake queries. Keep the workflow direct, inspectable, and easy to run locall
 ## Skills
 
 - `snowflake-analysis`: set up the local environment and answer Snowflake data questions.
-- `osi-semantic-model-builder`: convert exported Power BI, Tableau, generic, neutral IR, or
-  existing Ossie metadata into an OSI model.
+- `osi-semantic-model-builder`: deterministically convert exported Power BI, Tableau, generic,
+  neutral IR, or existing Ossie metadata, then apply an audited semantic review patch.
 - `analytics-report-generation`: create an optional chart or self-contained HTML report from a
   validated aggregate result.
 
@@ -31,3 +31,4 @@ Snowflake queries. Keep the workflow direct, inspectable, and easy to run locall
 - `data_agent/` contains local execution helpers.
 - `semantic/models/` contains models available to analysis.
 - `semantic/generated/` contains repeatable BI conversion output for review.
+- `ossie-main/` is the pinned official Apache Ossie schema and validation source.

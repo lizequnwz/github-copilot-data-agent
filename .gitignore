@@ -12,5 +12,6 @@ reports/generated/
 snowflake_config.yaml
 semantic/generated/*.osi.yaml
 semantic/generated/*.conversion.json
+semantic/generated/*.review.patch.json
 *.request.json
 *.response.json

@@ -1,0 +1,3 @@
+[submodule "ossie-main"]
+	path = ossie-main
+	url = https://github.com/apache/ossie.git

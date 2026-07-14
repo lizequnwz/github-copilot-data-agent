@@ -50,7 +50,7 @@ def _connect(request: dict[str, Any], settings: Settings) -> Any:
     if settings.authenticator != "externalbrowser":
         raise ContractError("only externalbrowser authentication is enabled by this project")
     try:
-        import snowflake.connector
+        import snowflake.connector  # type: ignore[import-not-found]
     except ImportError as exc:
         raise ContractError("Snowflake connector missing; run uv sync --extra snowflake") from exc
     return snowflake.connector.connect(

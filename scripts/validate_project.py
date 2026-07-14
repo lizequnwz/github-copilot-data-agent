@@ -2,9 +2,17 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 from pathlib import Path
 
 import yaml
+
+from data_agent.semantic.ossie import (
+    EXPECTED_OSSIE_COMMIT,
+    EXPECTED_SCHEMA_SHA256,
+    SCHEMA,
+    schema_sha256,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -13,6 +21,7 @@ def main() -> int:
     errors: list[str] = []
     required = [
         "AGENTS.md",
+        ".gitmodules",
         ".github/copilot-instructions.md",
         ".github/agents/data-analytics.agent.md",
         ".github/skills/snowflake-analysis/SKILL.md",
@@ -22,7 +31,9 @@ def main() -> int:
         ".github/skills/analytics-report-generation/SKILL.md",
         "snowflake_config.example.yaml",
         "semantic/models/demo_sales.yaml",
-        "semantic/schemas/osi-0.2.0.dev0.schema.json",
+        "ossie-main/core-spec/osi-schema.json",
+        "ossie-main/validation/validate.py",
+        "ossie-main/LICENSE",
         "docs/DESIGN.md",
         "docs/WORKFLOW.md",
         "docs/SEMANTIC_MODELS.md",
@@ -60,11 +71,27 @@ def main() -> int:
     errors.extend(f"missing skill: {name}" for name in sorted(expected_skills - skill_names))
 
     try:
-        json.loads((ROOT / "semantic/schemas/osi-0.2.0.dev0.schema.json").read_text())
+        json.loads(SCHEMA.read_text())
         json.loads((ROOT / "examples/analysis/sales-by-region.json").read_text())
         yaml.safe_load((ROOT / "snowflake_config.example.yaml").read_text())
     except Exception as exc:
         errors.append(f"invalid JSON/YAML project artifact: {exc}")
+
+    if SCHEMA.is_file() and schema_sha256() != EXPECTED_SCHEMA_SHA256:
+        errors.append("Apache Ossie schema does not match the pinned reviewed hash")
+    try:
+        commit = subprocess.run(
+            ["git", "-C", str(ROOT / "ossie-main"), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        if commit != EXPECTED_OSSIE_COMMIT:
+            errors.append(
+                f"Apache Ossie submodule commit is {commit}; expected {EXPECTED_OSSIE_COMMIT}"
+            )
+    except (OSError, subprocess.CalledProcessError):
+        errors.append("Apache Ossie submodule is not initialized")
 
     legacy_term = "enter" + "prise"
     for path in ROOT.rglob("*"):
@@ -72,13 +99,12 @@ def main() -> int:
             not path.is_file()
             or ".git" in path.parts
             or ".venv" in path.parts
+            or "ossie-main" in path.parts
             or path.name == "uv.lock"
             or path.suffix.lower() not in {".md", ".py", ".yaml", ".yml", ".toml", ".json"}
         ):
             continue
-        if re.search(
-            rf"\b{legacy_term}\w*\b", path.read_text(encoding="utf-8"), re.IGNORECASE
-        ):
+        if re.search(rf"\b{legacy_term}\w*\b", path.read_text(encoding="utf-8"), re.IGNORECASE):
             errors.append(f"legacy positioning remains: {path.relative_to(ROOT)}")
 
     if errors:

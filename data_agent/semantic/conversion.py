@@ -10,11 +10,18 @@ import yaml
 from data_agent.bi.extract import extract_generic_ir, extract_powerbi_ir, extract_tableau_ir
 from data_agent.io import ContractError, envelope, require_string, write_json_atomic
 from data_agent.semantic.ingestion import OSI_VERSION, build_osi_from_ir
-from data_agent.semantic.models import load_document, validate_document
+from data_agent.semantic.models import load_document
+from data_agent.semantic.ossie import (
+    EXPECTED_OSSIE_COMMIT,
+    SCHEMA,
+    schema_sha256,
+    validate_osi_document,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
-SCHEMA = ROOT / "semantic/schemas/osi-0.2.0.dev0.schema.json"
-UPSTREAM_SCHEMA = "https://github.com/apache/ossie/blob/main/core-spec/osi-schema.json"
+UPSTREAM_SCHEMA = (
+    f"https://github.com/apache/ossie/blob/{EXPECTED_OSSIE_COMMIT}/core-spec/osi-schema.json"
+)
 SUPPORTED_SOURCE_TYPES = {"auto", "powerbi", "tableau", "generic", "semantic-ir", "osi"}
 
 
@@ -96,6 +103,23 @@ def _translation_counts(ir: dict[str, Any] | None) -> dict[str, int]:
     return counts
 
 
+def _document_summary(document: dict[str, Any]) -> dict[str, int]:
+    models = [item for item in document.get("semantic_model", []) if isinstance(item, dict)]
+    datasets = [
+        dataset
+        for model in models
+        for dataset in model.get("datasets", [])
+        if isinstance(dataset, dict)
+    ]
+    return {
+        "datasets": len(datasets),
+        "fields": sum(len(dataset.get("fields", [])) for dataset in datasets),
+        "relationships": sum(len(model.get("relationships", [])) for model in models),
+        "metrics": sum(len(model.get("metrics", [])) for model in models),
+        "unsupported": 0,
+    }
+
+
 def convert_semantic(request: dict[str, Any]) -> dict[str, Any]:
     source = Path(require_string(request, "source_path")).resolve()
     requested_type = str(request.get("source_type", "auto")).casefold()
@@ -113,7 +137,7 @@ def convert_semantic(request: dict[str, Any]) -> dict[str, Any]:
         model = document.get("semantic_model", [{}])[0]
         model_name = str(request.get("model_name") or model.get("name") or source.stem)
         source_snapshot = hashlib.sha256(source.read_bytes()).hexdigest()
-        ir_summary = None
+        ir_summary = _document_summary(document)
         ir: dict[str, Any] | None = None
     else:
         ir = _load_ir(request, source_type)
@@ -128,8 +152,8 @@ def convert_semantic(request: dict[str, Any]) -> dict[str, Any]:
             "unsupported": len(ir.get("unsupported", [])),
         }
 
-    schema_errors = validate_document(document, SCHEMA)
-    for error in schema_errors:
+    validation = validate_osi_document(document)
+    for error in validation["official_errors"]:
         issues.append(
             {
                 "severity": "blocking",
@@ -138,9 +162,14 @@ def convert_semantic(request: dict[str, Any]) -> dict[str, Any]:
                 "message": error,
             }
         )
+    existing_issues = {(str(item.get("code")), str(item.get("element"))) for item in issues}
+    for issue in validation["readiness_issues"]:
+        key = (str(issue.get("code")), str(issue.get("element")))
+        if key not in existing_issues:
+            issues.append(issue)
     yaml_text = yaml.safe_dump(document, sort_keys=False, allow_unicode=True)
     slug = _slug(model_name)
-    model_path = output_root / f"{slug}.osi.yaml"
+    model_path = output_root / f"{slug}.raw.osi.yaml"
     manifest_path = output_root / f"{slug}.conversion.json"
     model_path.write_text(yaml_text, encoding="utf-8")
 
@@ -148,7 +177,7 @@ def convert_semantic(request: dict[str, Any]) -> dict[str, Any]:
     blockers = sum(issue.get("severity") == "blocking" for issue in issues)
     manifest = {
         "request_id": str(request.get("request_id", "unknown")),
-        "status": "review_required" if blockers or issues else "ready_for_review",
+        "status": "review_required",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "source": {
             "type": source_type,
@@ -159,30 +188,38 @@ def convert_semantic(request: dict[str, Any]) -> dict[str, Any]:
             "specification": "Apache Ossie (formerly Open Semantic Interchange)",
             "version": OSI_VERSION,
             "schema_source": UPSTREAM_SCHEMA,
-            "vendored_schema": str(SCHEMA.relative_to(ROOT)),
-            "model_path": str(model_path.relative_to(ROOT)),
-            "model_sha256": _sha256_text(yaml_text),
-            "schema_valid": not schema_errors,
+            "submodule_commit": EXPECTED_OSSIE_COMMIT,
+            "schema_path": str(SCHEMA.relative_to(ROOT)),
+            "schema_sha256": schema_sha256(),
+            "raw_model_path": str(model_path.relative_to(ROOT)),
+            "raw_model_sha256": _sha256_text(yaml_text),
+            "schema_valid": validation["schema_valid"],
+            "official_valid": validation["official_valid"],
+            "analysis_ready_before_review": validation["analysis_ready"],
         },
         "summary": ir_summary,
         "translation_states": state_counts,
         "issues": issues,
         "review_checklist": [
             "Resolve every blocking issue and physical source placeholder.",
-            "Review vendor expressions retained in DATA_AGENT extensions.",
+            "Review source expressions and metadata retained in COMMON/vendor extensions.",
             "Verify primary keys and relationship many-to-one direction.",
-            "Compile representative metrics and compare them with the source BI model.",
-            "Copy the model to semantic/models after reviewing mappings and important metrics.",
+            "Create an audited review patch with evidence, confidence, and assumptions.",
+            "Apply the patch deterministically; clean reviewed models promote automatically.",
         ],
+        "review": {"required": True, "patch_path": None, "final_model_path": None},
+        "warehouse_verification": {"status": "not_requested"},
     }
     write_json_atomic(manifest_path, manifest)
     return envelope(
         request,
-        "success" if not schema_errors else "invalid",
+        "success" if validation["official_valid"] else "invalid",
         source_type=source_type,
         model_path=str(model_path),
         manifest_path=str(manifest_path),
-        schema_valid=not schema_errors,
+        raw_model_path=str(model_path),
+        schema_valid=validation["schema_valid"],
+        official_valid=validation["official_valid"],
         issue_count=len(issues),
         blocking_issue_count=blockers,
         summary=ir_summary,

@@ -8,14 +8,14 @@ version = "0.1.0"
 description = "Local tools for a semantic-model-assisted GitHub Copilot Snowflake data agent"
 requires-python = ">=3.11"
 dependencies = [
-  "jsonschema>=4.23,<5",
-  "PyYAML>=6.0,<7",
-  "sqlglot>=26,<30",
+  "jsonschema>=4.26,<5",
+  "PyYAML>=6.0.3,<7",
+  "sqlglot>=30.12,<31",
 ]
 
 [project.optional-dependencies]
 snowflake = ["snowflake-connector-python>=3.14,<5"]
-dev = ["ruff>=0.9,<1", "mypy>=1.14,<2", "types-PyYAML>=6.0", "types-jsonschema>=4.23"]
+dev = ["ruff>=0.9,<1", "mypy>=1.14,<2", "types-PyYAML>=6.0", "types-jsonschema>=4.26"]
 
 [project.scripts]
 data-agent = "data_agent.cli:main"
@@ -26,6 +26,7 @@ include = ["data_agent*"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+exclude = ["ossie-main"]
 
 [tool.mypy]
 python_version = "3.11"

@@ -35,13 +35,15 @@ uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py \
   tests/fixtures/generic/sales.yaml --model-name demo_generic
 ```
 
-Each command prints a summary and writes:
+Each first-stage command prints a summary and writes:
 
 ```text
-semantic/generated/<model>.osi.yaml
+semantic/generated/<model>.raw.osi.yaml
 semantic/generated/<model>.conversion.json
 ```
 
 Open the manifest first. Resolve blocking physical mappings, then inspect important fields,
-relationships, and metric expressions in the YAML. Rerun the command after changing source or map
-files; generated output is replaceable.
+relationships, and metric expressions in the raw YAML. Create the audited review patch described
+in `review-patch.md`, then rerun the same command with `--review-patch PATH`. A clean review writes
+`<model>.osi.yaml` and promotes it to `semantic/models/<model>.yaml`; generated output is
+replaceable.

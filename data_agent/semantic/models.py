@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any, Iterable
 
+import json
 import yaml
 from jsonschema import Draft202012Validator
+
+from data_agent.semantic.ossie import SCHEMA, official_validation_errors
 
 
 class SemanticError(ValueError):
@@ -26,8 +28,11 @@ def load_document(path: str | Path) -> dict[str, Any]:
     return value
 
 
-def validate_document(document: dict[str, Any], schema_path: str | Path) -> list[str]:
-    schema = json.loads(Path(schema_path).read_text(encoding="utf-8"))
+def validate_document(document: dict[str, Any], schema_path: str | Path = SCHEMA) -> list[str]:
+    path = Path(schema_path).resolve()
+    if path == SCHEMA.resolve():
+        return official_validation_errors(document)
+    schema = json.loads(path.read_text(encoding="utf-8"))
     errors = sorted(Draft202012Validator(schema).iter_errors(document), key=lambda e: list(e.path))
     return [
         f"{'/'.join(str(p) for p in error.path) or '<root>'}: {error.message}" for error in errors

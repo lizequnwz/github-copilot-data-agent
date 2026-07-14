@@ -1,4 +1,5 @@
 table Orders
+    description: Orders used for booked-sales analysis
     annotation DataAgent.Source = DEMO.ANALYTICS.ORDERS
 
     column OrderId
@@ -17,6 +18,13 @@ table Orders
     column SalesAmount
         dataType: decimal
         sourceColumn: SALES_AMOUNT
+        description: Booked sales amount
+        displayFolder: Sales
+
+    column Margin = [SalesAmount] * 0.1
+        dataType: decimal
+        description: Illustrative calculated margin
+        displayFolder: Sales
 
     measure 'Total Sales' = SUM(Orders[SalesAmount])
         formatString: "$"#,0.00

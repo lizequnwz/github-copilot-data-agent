@@ -11,12 +11,14 @@ from data_agent.io import ContractError, envelope, read_json, write_json_atomic
 from data_agent.reporting.render import render_chart, render_report
 from data_agent.security.sql import SQLSafetyError, validate_sql
 from data_agent.semantic.compiler import compile_plan
+from data_agent.semantic.conversion import convert_semantic
 from data_agent.semantic.models import (
     SemanticError,
     load_document,
     search_documents,
-    validate_document,
 )
+from data_agent.semantic.ossie import validate_osi_document
+from data_agent.semantic.review import review_semantic
 from data_agent.tools.result_validation import validate_result
 from data_agent.tools.snowflake import (
     cancel_query,
@@ -30,8 +32,6 @@ from data_agent.tools.snowflake import (
 )
 
 Handler = Callable[[dict[str, Any]], dict[str, Any]]
-ROOT = Path(__file__).resolve().parents[1]
-SCHEMA = ROOT / "semantic/schemas/osi-0.2.0.dev0.schema.json"
 
 
 def handle_validate_sql(request: dict[str, Any]) -> dict[str, Any]:
@@ -45,8 +45,13 @@ def handle_validate_sql(request: dict[str, Any]) -> dict[str, Any]:
 
 def handle_osi_validate(request: dict[str, Any]) -> dict[str, Any]:
     document = load_document(str(request.get("model_path")))
-    errors = validate_document(document, request.get("schema_path", SCHEMA))
-    return envelope(request, "valid" if not errors else "invalid", errors=errors, warnings=[])
+    validation = validate_osi_document(document)
+    return envelope(
+        request,
+        "valid" if validation["official_valid"] else "invalid",
+        **validation,
+        warnings=[issue["message"] for issue in validation["readiness_issues"]],
+    )
 
 
 def handle_osi_search(request: dict[str, Any]) -> dict[str, Any]:
@@ -107,6 +112,8 @@ HANDLERS: dict[str, Handler] = {
     "osi-validate": handle_osi_validate,
     "osi-search": handle_osi_search,
     "osi-compile": handle_osi_compile,
+    "semantic-convert": convert_semantic,
+    "semantic-review": review_semantic,
     "semantic-diff": handle_semantic_diff,
     "validate-result": validate_result,
     "render-chart": render_chart,

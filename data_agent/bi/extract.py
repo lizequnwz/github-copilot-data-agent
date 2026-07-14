@@ -32,6 +32,30 @@ def _unquote(value: str) -> str:
     return value.replace("''", "'")
 
 
+def _property(text: str, name: str) -> str | None:
+    match = re.search(rf"(?im)^\s*{re.escape(name)}:\s*([^\r\n]+)", text)
+    return _unquote(match.group(1)) if match else None
+
+
+def _following_property_block(text: str, start: int) -> str:
+    remainder = text[start:]
+    boundary = re.search(
+        r"(?m)^\s*(?:column|measure|partition|hierarchy|relationship|role|table)\s+",
+        remainder,
+    )
+    return remainder[: boundary.start()] if boundary else remainder
+
+
+def _synonyms(primary: str, *values: Any) -> list[str]:
+    result: list[str] = []
+    for value in values:
+        candidate = _tableau_identifier(str(value)) if value is not None else ""
+        candidate = candidate.strip()
+        if candidate and candidate.casefold() != primary.casefold() and candidate not in result:
+            result.append(candidate)
+    return result
+
+
 def _source_map(request: dict[str, Any]) -> dict[str, str]:
     value = request.get("source_map", {})
     if not isinstance(value, dict):
@@ -92,7 +116,22 @@ def _tmdl_blocks(text: str, keyword: str) -> list[tuple[str, str]]:
     pattern = re.compile(
         rf"(?ms)^\s*{keyword}\s+(.+?)(?:\s*=\s*[^\r\n]*)?\s*$\n(.*?)(?=^\s*(?:table|column|measure|partition|hierarchy|relationship|role|annotation)\s+|\Z)"
     )
-    return [(_unquote(match.group(1).split("=")[0]), match.group(2)) for match in pattern.finditer(text)]
+    return [
+        (_unquote(match.group(1).split("=")[0]), match.group(2)) for match in pattern.finditer(text)
+    ]
+
+
+def _tmdl_inline_expression(text: str, keyword: str, target_name: str) -> str | None:
+    """Return an inline TMDL expression without treating it as a physical column."""
+
+    for match in re.finditer(rf"(?m)^\s*{re.escape(keyword)}\s+([^\r\n]+)$", text):
+        declaration = match.group(1).strip()
+        if "=" not in declaration:
+            continue
+        declared_name, expression = declaration.split("=", 1)
+        if _unquote(declared_name.strip()) == target_name:
+            return expression.strip() or None
+    return None
 
 
 def extract_powerbi_ir(request: dict[str, Any]) -> dict[str, Any]:
@@ -136,9 +175,7 @@ def extract_powerbi_ir(request: dict[str, Any]) -> dict[str, Any]:
                     "to_dataset": _unquote(to_table),
                     "from_columns": [_unquote(from_column)],
                     "to_columns": [_unquote(to_column)],
-                    "active": not bool(
-                        re.search(r"(?im)^\s*isActive:\s*false\s*$", block)
-                    ),
+                    "active": not bool(re.search(r"(?im)^\s*isActive:\s*false\s*$", block)),
                     "translation_status": "exact",
                 }
             )
@@ -147,6 +184,10 @@ def extract_powerbi_ir(request: dict[str, Any]) -> dict[str, Any]:
             continue
         default_table = _unquote(table_matches[0].group(1)) if table_matches else path.stem
         table_key = default_table.casefold()
+        table_header = ""
+        if table_matches:
+            table_header = _following_property_block(text, table_matches[0].end())
+        table_description = _property(table_header, "description")
         source_hint = re.search(
             r"(?im)^\s*annotation\s+(?:DataAgent\.)?Source\s*=\s*([^\r\n]+)", text
         )
@@ -162,28 +203,62 @@ def extract_powerbi_ir(request: dict[str, Any]) -> dict[str, Any]:
                 "fields": [],
                 "primary_key": [],
                 "source_file": str(path.relative_to(root)),
+                "description": table_description,
                 "translation_status": "exact" if physical_source else "requires-human-review",
             },
         )
         if physical_source:
             dataset["physical_source"] = physical_source
+        if table_description:
+            dataset["description"] = table_description
 
         for column_name, block in _tmdl_blocks(text, "column"):
             source_column = re.search(r"(?im)^\s*sourceColumn:\s*([^\r\n]+)", block)
             data_type = re.search(r"(?im)^\s*dataType:\s*([^\r\n]+)", block)
             description = re.search(r"(?im)^\s*description:\s*([^\r\n]+)", block)
+            display_folder = _property(block, "displayFolder")
+            format_string = _property(block, "formatString")
             is_key = bool(re.search(r"(?im)^\s*isKey:\s*true\s*$", block))
             field_name = _slug(column_name, "field")
-            physical_column = _unquote(source_column.group(1)) if source_column else column_name
-            normalized_expression = (
-                f"{_slug(default_table)}.{_slug(physical_column, field_name)}"
+            calculated_dax = (
+                None if source_column else _tmdl_inline_expression(text, "column", column_name)
             )
+            if source_column is None:
+                unsupported.append(
+                    {
+                        "source_file": str(path.relative_to(root)),
+                        "field": f"{default_table}.{column_name}",
+                        "construct": "calculated_column_dax",
+                        "source_expression": calculated_dax or "unavailable",
+                    }
+                )
+                dataset["fields"].append(
+                    {
+                        "id": f"{default_table}.{column_name}",
+                        "name": column_name,
+                        "source_expression": {
+                            "language": "DAX",
+                            "value": calculated_dax,
+                        },
+                        "data_type": _unquote(data_type.group(1)) if data_type else None,
+                        "description": _unquote(description.group(1)) if description else None,
+                        "label": display_folder,
+                        "format": format_string,
+                        "is_dimension": True,
+                        "is_time": bool(data_type and "date" in data_type.group(1).casefold()),
+                        "translation_status": "unsupported",
+                        "prevent_physical_fallback": True,
+                    }
+                )
+                continue
+            physical_column = _unquote(source_column.group(1))
+            normalized_expression = f"{_slug(default_table)}.{_slug(physical_column, field_name)}"
             dax_field_lookup[f"{default_table.casefold()}.{column_name.casefold()}"] = (
                 normalized_expression
             )
-            physical_column_lookup[
-                f"{default_table.casefold()}.{column_name.casefold()}"
-            ] = _slug(physical_column, field_name)
+            physical_column_lookup[f"{default_table.casefold()}.{column_name.casefold()}"] = _slug(
+                physical_column, field_name
+            )
             dataset["fields"].append(
                 {
                     "id": f"{default_table}.{column_name}",
@@ -192,6 +267,9 @@ def extract_powerbi_ir(request: dict[str, Any]) -> dict[str, Any]:
                     "normalized_expression": normalized_expression,
                     "data_type": _unquote(data_type.group(1)) if data_type else None,
                     "description": _unquote(description.group(1)) if description else None,
+                    "label": display_folder,
+                    "format": format_string,
+                    "synonyms": _synonyms(column_name, physical_column),
                     "is_dimension": True,
                     "is_time": bool(data_type and "date" in data_type.group(1).casefold()),
                     "translation_status": "exact",
@@ -208,6 +286,7 @@ def extract_powerbi_ir(request: dict[str, Any]) -> dict[str, Any]:
         for measure_match in measure_pattern.finditer(text):
             measure_name = _unquote(measure_match.group(1))
             dax = measure_match.group(2).strip()
+            measure_metadata = _following_property_block(text, measure_match.end())
             normalized, status = _translate_aggregate(
                 dax,
                 _slug(default_table),
@@ -221,6 +300,10 @@ def extract_powerbi_ir(request: dict[str, Any]) -> dict[str, Any]:
                     "dataset": default_table,
                     "source_expression": {"language": "DAX", "value": dax},
                     "normalized_expression": normalized,
+                    "dialect": "ANSI_SQL",
+                    "description": _property(measure_metadata, "description"),
+                    "label": _property(measure_metadata, "displayFolder"),
+                    "format": _property(measure_metadata, "formatString"),
                     "translation_status": status,
                 }
             )
@@ -290,6 +373,17 @@ def _first_descendant(element: ET.Element, name: str) -> ET.Element | None:
     return next(iter(_descendants(element, name)), None)
 
 
+def _direct_child(element: ET.Element, name: str) -> ET.Element | None:
+    return next((item for item in list(element) if _local_tag(item) == name), None)
+
+
+def _element_text(element: ET.Element | None) -> str | None:
+    if element is None:
+        return None
+    value = " ".join(part.strip() for part in element.itertext() if part.strip())
+    return value or None
+
+
 def _tableau_identifier(value: str | None) -> str:
     raw = str(value or "").strip()
     parts = re.findall(r"\[([^\]]+)\]", raw)
@@ -311,7 +405,9 @@ def _tableau_source(relation: ET.Element | None) -> str | None:
 def _field_map(request: dict[str, Any]) -> dict[str, str]:
     value = request.get("field_map", {})
     if not isinstance(value, dict):
-        raise ContractError("field_map must be an object mapping Tableau fields to SQL column names")
+        raise ContractError(
+            "field_map must be an object mapping Tableau fields to SQL column names"
+        )
     result: dict[str, str] = {}
     for key, mapped in value.items():
         if isinstance(mapped, str):
@@ -357,7 +453,9 @@ def _resolve_tableau_descriptor(
         return source, sources, suffix.removeprefix(".")
     if suffix == ".tde" and source.is_file():
         descriptor = (
-            Path(descriptor_path).resolve() if descriptor_path else _sibling_with_suffix(source, ".tds")
+            Path(descriptor_path).resolve()
+            if descriptor_path
+            else _sibling_with_suffix(source, ".tds")
         )
         if descriptor is None or descriptor.suffix.casefold() != ".tds" or not descriptor.is_file():
             raise ContractError(
@@ -414,7 +512,9 @@ def _tableau_physical_source(
 def _tableau_column_records(datasource: ET.Element) -> list[dict[str, Any]]:
     records: dict[str, dict[str, Any]] = {}
     for column in _descendants(datasource, "column"):
-        raw_name = _tableau_identifier(column.get("caption") or column.get("name"))
+        caption = _tableau_identifier(column.get("caption"))
+        tableau_name = _tableau_identifier(column.get("name"))
+        raw_name = caption or tableau_name
         if not raw_name:
             continue
         calculation = _first_descendant(column, "calculation")
@@ -425,15 +525,19 @@ def _tableau_column_records(datasource: ET.Element) -> list[dict[str, Any]]:
             "role": str(column.get("role") or "").casefold(),
             "aggregation": column.get("aggregation"),
             "formula": calculation.get("formula") if calculation is not None else None,
+            "description": _element_text(_first_descendant(column, "desc")),
+            "semantic_role": column.get("semantic-role"),
+            "format": column.get("default-format"),
+            "synonyms": _synonyms(raw_name, tableau_name),
             "source": "column",
         }
     for metadata in _descendants(datasource, "metadata-record"):
         if metadata.get("class") != "column":
             continue
-        values = {
-            _local_tag(child): (child.text or "").strip() for child in list(metadata)
-        }
-        raw_name = _tableau_identifier(values.get("local-name") or values.get("remote-name"))
+        values = {_local_tag(child): (child.text or "").strip() for child in list(metadata)}
+        raw_name = _tableau_identifier(
+            values.get("local-name") or values.get("remote-alias") or values.get("remote-name")
+        )
         if not raw_name:
             continue
         existing = records.setdefault(
@@ -445,6 +549,12 @@ def _tableau_column_records(datasource: ET.Element) -> list[dict[str, Any]]:
                 "role": "",
                 "aggregation": values.get("aggregation"),
                 "formula": None,
+                "description": None,
+                "semantic_role": None,
+                "format": None,
+                "synonyms": _synonyms(
+                    raw_name, values.get("remote-alias"), values.get("remote-name")
+                ),
                 "source": "metadata-record",
             },
         )
@@ -454,7 +564,43 @@ def _tableau_column_records(datasource: ET.Element) -> list[dict[str, Any]]:
             existing["aggregation"] = values.get("aggregation")
         if not existing.get("tableau_name"):
             existing["tableau_name"] = values.get("local-name") or raw_name
+        existing_synonyms = existing.setdefault("synonyms", [])
+        for synonym in _synonyms(raw_name, values.get("remote-alias"), values.get("remote-name")):
+            if synonym not in existing_synonyms:
+                existing_synonyms.append(synonym)
+
+    labels: dict[str, str] = {}
+    for folder in _descendants(datasource, "folder"):
+        folder_name = str(folder.get("name") or "").strip()
+        if not folder_name:
+            continue
+        for item in _descendants(folder, "folder-item"):
+            field_name = _tableau_identifier(item.get("name"))
+            if field_name:
+                labels[field_name.casefold()] = folder_name
+    for key, record in records.items():
+        if key in labels:
+            record["label"] = labels[key]
     return list(records.values())
+
+
+def _metric_description(suffix: str | None, name: str, description: Any) -> str | None:
+    prefixes = {
+        "average": "Average",
+        "sum": "Sum",
+        "minimum": "Minimum",
+        "maximum": "Maximum",
+        "count": "Count",
+        "distinct_count": "Distinct count",
+        "calculated": "Calculated measure",
+    }
+    prefix = prefixes.get(str(suffix))
+    source_description = str(description).strip() if description else ""
+    if prefix and source_description:
+        return f"{prefix} of {name}. {source_description}"
+    if source_description:
+        return source_description
+    return f"{prefix} of {name}." if prefix else None
 
 
 def _tableau_aggregation_metric(
@@ -526,10 +672,16 @@ def extract_tableau_ir(request: dict[str, Any]) -> dict[str, Any]:
             or datasource.get("name")
             or descriptor.stem
         )
+        source_name = str(source_name)
         dataset_name = _slug(source_name, "datasource")
-        physical_source = _tableau_physical_source(
-            datasource, source_name, dataset_name, mapping
+        datasource_description = _element_text(_direct_child(datasource, "desc"))
+        datasource_synonyms = _synonyms(
+            source_name,
+            datasource.get("caption"),
+            datasource.get("formatted-name"),
+            datasource.get("name"),
         )
+        physical_source = _tableau_physical_source(datasource, source_name, dataset_name, mapping)
         fields: list[dict[str, Any]] = []
         field_lookup: dict[str, str] = {}
         source_columns = _tableau_column_records(datasource)
@@ -546,12 +698,19 @@ def extract_tableau_ir(request: dict[str, Any]) -> dict[str, Any]:
             )
             expression = f"{dataset_name}.{physical_column}"
             field_lookup[raw_name.casefold()] = expression
-            formula = record.get("formula")
-            translation_status = "exact" if formula is None else "requires-human-review"
-            if formula and _is_complex_tableau_formula(str(formula)):
-                unsupported.append(
-                    {"field": raw_name, "construct": "LOD_or_table_calculation"}
-                )
+            formula = str(record.get("formula") or "").strip()
+            normalized_expression: str | None = expression
+            dialect_expressions: list[dict[str, str]] = []
+            translation_status = "exact"
+            if formula:
+                dialect_expressions.append({"dialect": "TABLEAU", "expression": formula})
+                if formula == "1":
+                    normalized_expression = "1"
+                else:
+                    normalized_expression = None
+                    translation_status = "requires-human-review"
+            if formula and _is_complex_tableau_formula(formula):
+                unsupported.append({"field": raw_name, "construct": "LOD_or_table_calculation"})
             fields.append(
                 {
                     "id": f"{source_name}.{raw_name}",
@@ -560,8 +719,16 @@ def extract_tableau_ir(request: dict[str, Any]) -> dict[str, Any]:
                         "language": "TABLEAU",
                         "value": formula or record.get("tableau_name"),
                     },
-                    "normalized_expression": expression,
+                    "normalized_expression": normalized_expression,
+                    "dialect": "ANSI_SQL",
+                    "dialect_expressions": dialect_expressions,
                     "data_type": record.get("data_type"),
+                    "description": record.get("description"),
+                    "label": record.get("label"),
+                    "format": record.get("format"),
+                    "semantic_role": record.get("semantic_role"),
+                    "synonyms": record.get("synonyms", []),
+                    "extension_vendor": "SALESFORCE",
                     "is_dimension": record.get("role") == "dimension",
                     "is_time": str(record.get("data_type")).casefold()
                     in {"date", "datetime", "timestamp"},
@@ -575,6 +742,7 @@ def extract_tableau_ir(request: dict[str, Any]) -> dict[str, Any]:
             raw_name = str(record["name"])
             field_expression = field_lookup[raw_name.casefold()]
             formula = str(record.get("formula") or "").strip()
+            dialect_expressions = [{"dialect": "TABLEAU", "expression": formula}] if formula else []
             metric_expression: str | None
             metric_suffix: str | None
             metric_status: str
@@ -611,10 +779,12 @@ def extract_tableau_ir(request: dict[str, Any]) -> dict[str, Any]:
                         if formula == "1"
                         else f"{metric_suffix or 'measure'}_{_slug(raw_name, 'measure')}"
                     ),
+                    "display_name": raw_name,
                     "dataset": source_name,
                     "description": (
-                        f"Tableau {'calculation' if formula else 'default aggregation'} "
-                        f"for {raw_name}."
+                        "Count of source records."
+                        if formula == "1"
+                        else _metric_description(metric_suffix, raw_name, record.get("description"))
                     ),
                     "source_expression": {
                         "language": "TABLEAU",
@@ -622,6 +792,12 @@ def extract_tableau_ir(request: dict[str, Any]) -> dict[str, Any]:
                     },
                     "source_format": "tableau-tds-metadata",
                     "normalized_expression": metric_expression,
+                    "dialect": "ANSI_SQL",
+                    "dialect_expressions": dialect_expressions,
+                    "synonyms": record.get("synonyms", []),
+                    "label": record.get("label"),
+                    "format": record.get("format"),
+                    "extension_vendor": "SALESFORCE",
                     "translation_status": metric_status,
                 }
             )
@@ -631,8 +807,11 @@ def extract_tableau_ir(request: dict[str, Any]) -> dict[str, Any]:
                 "id": source_name,
                 "name": source_name,
                 "physical_source": physical_source,
+                "description": datasource_description,
+                "synonyms": datasource_synonyms,
                 "fields": fields,
                 "source_file": descriptor.name,
+                "extension_vendor": "SALESFORCE",
                 "translation_status": "exact" if physical_source else "requires-human-review",
             }
         )
@@ -670,7 +849,11 @@ def extract_generic_ir(request: dict[str, Any]) -> dict[str, Any]:
     if not source.is_file() or source.suffix.lower() not in {".json", ".yaml", ".yml"}:
         raise ContractError("generic source must be a JSON or YAML file")
     try:
-        raw = json.loads(source.read_text(encoding="utf-8")) if source.suffix.lower() == ".json" else yaml.safe_load(source.read_text(encoding="utf-8"))
+        raw = (
+            json.loads(source.read_text(encoding="utf-8"))
+            if source.suffix.lower() == ".json"
+            else yaml.safe_load(source.read_text(encoding="utf-8"))
+        )
     except (json.JSONDecodeError, yaml.YAMLError) as exc:
         raise ContractError(f"invalid generic semantic file: {exc}") from exc
     if not isinstance(raw, dict):
@@ -697,16 +880,36 @@ def extract_generic_ir(request: dict[str, Any]) -> dict[str, Any]:
                 continue
             field_name = str(field.get("name") or field.get("id") or "field")
             normalized_name = _slug(field_name, "field")
+            source_expression = field.get("expression")
+            dialect_expressions = []
+            normalized_expression: Any = source_expression
+            if isinstance(source_expression, dict):
+                supplied = source_expression.get("dialects", [])
+                dialect_expressions = supplied if isinstance(supplied, list) else []
+                normalized_expression = None
             fields.append(
                 {
                     "id": field.get("id") or f"{name}.{field_name}",
                     "name": field_name,
                     "description": field.get("description"),
                     "data_type": field.get("data_type", field.get("type")),
-                    "normalized_expression": str(field.get("expression") or f"{dataset_name}.{normalized_name}"),
-                    "source_expression": field.get("source_expression", field.get("expression")),
+                    "normalized_expression": str(
+                        normalized_expression or f"{dataset_name}.{normalized_name}"
+                    )
+                    if not dialect_expressions
+                    else None,
+                    "dialect": field.get("dialect", "ANSI_SQL"),
+                    "dialect_expressions": dialect_expressions,
+                    "source_expression": field.get("source_expression", source_expression),
+                    "label": field.get("label"),
+                    "ai_context": field.get("ai_context"),
+                    "synonyms": field.get("synonyms", []),
                     "is_dimension": bool(field.get("dimension", True)),
-                    "is_time": bool(field.get("is_time") or str(field.get("type", "")).casefold() in {"date", "datetime", "timestamp"}),
+                    "is_time": bool(
+                        field.get("is_time")
+                        or str(field.get("type", "")).casefold()
+                        in {"date", "datetime", "timestamp"}
+                    ),
                     "translation_status": str(field.get("translation_status", "exact")),
                 }
             )
@@ -721,7 +924,11 @@ def extract_generic_ir(request: dict[str, Any]) -> dict[str, Any]:
                 "id": item.get("id") or name,
                 "name": name,
                 "description": item.get("description"),
-                "physical_source": mapping.get(name.casefold()) or item.get("source") or item.get("physical_source"),
+                "ai_context": item.get("ai_context"),
+                "synonyms": item.get("synonyms", []),
+                "physical_source": mapping.get(name.casefold())
+                or item.get("source")
+                or item.get("physical_source"),
                 "primary_key": item.get("primary_key", []),
                 "unique_keys": item.get("unique_keys", []),
                 "fields": fields,
@@ -734,13 +941,22 @@ def extract_generic_ir(request: dict[str, Any]) -> dict[str, Any]:
     normalized_metrics = []
     for metric in metrics:
         expression = metric.get("normalized_expression", metric.get("expression"))
+        dialect_expressions = metric.get("dialect_expressions", [])
+        if isinstance(expression, dict):
+            supplied = expression.get("dialects", [])
+            dialect_expressions = supplied if isinstance(supplied, list) else []
+            expression = None
         normalized_metrics.append(
             {
                 **metric,
                 "name": metric.get("name") or metric.get("id"),
                 "normalized_expression": expression,
+                "dialect": metric.get("dialect", "ANSI_SQL"),
+                "dialect_expressions": dialect_expressions,
                 "source_expression": metric.get("source_expression", expression),
-                "translation_status": metric.get("translation_status", "exact" if expression else "requires-human-review"),
+                "translation_status": metric.get(
+                    "translation_status", "exact" if expression else "requires-human-review"
+                ),
             }
         )
     return {
@@ -749,6 +965,8 @@ def extract_generic_ir(request: dict[str, Any]) -> dict[str, Any]:
         "source_artifact": request.get("source_artifact", source.stem),
         "snapshot_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
         "description": raw.get("description"),
+        "ai_context": raw.get("ai_context"),
+        "synonyms": raw.get("synonyms", []),
         "datasets": datasets,
         "relationships": raw.get("relationships", []),
         "metrics": normalized_metrics,

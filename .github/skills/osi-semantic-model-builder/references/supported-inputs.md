@@ -3,8 +3,9 @@
 ## Power BI
 
 Provide an unpacked PBIP/TMDL directory. The extractor reads tables, columns, keys,
-relationships, and simple DAX aggregates. It preserves complex DAX and unsupported constructs as
-review items. If physical sources are absent, pass a source map such as:
+relationships, descriptions, display folders, formats, and simple DAX aggregates. Portable
+translations use `ANSI_SQL`; DAX remains in source metadata extensions. Complex DAX and
+unsupported constructs remain review items. If physical sources are absent, pass a source map:
 
 ```json
 {"Orders": "DEMO.ANALYTICS.ORDERS", "Customers": "DEMO.ANALYTICS.CUSTOMERS"}
@@ -34,11 +35,16 @@ Field-map values must be unquoted identifiers. Expose spaced or quoted source co
 view with simple aliases. Treat `REPLACE_WITH_DATABASE...` source values as blocking placeholders,
 not usable mappings.
 
+The extractor retains Tableau descriptions, captions/aliases, measure folders, semantic roles,
+formats, aggregations, and formulas. Physical columns and translated aggregates use `ANSI_SQL`;
+calculated expressions retain a `TABLEAU` dialect and gain SQL only when translation is exact.
+
 ## Generic JSON or YAML
 
 Use a top-level `datasets` or `tables` array. Datasets may contain `fields`/`columns`,
 `metrics`/`measures`, `source`, `primary_key`, and `unique_keys`. Top-level relationships and
-metrics are also accepted. Supplied normalized SQL expressions are retained.
+metrics are also accepted. Supplied descriptions, labels, `ai_context`, synonyms, and single- or
+multi-dialect expressions are retained.
 
 ## Neutral IR and existing Ossie
 

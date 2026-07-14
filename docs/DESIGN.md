@@ -22,9 +22,11 @@ Power BI / Tableau / JSON / YAML / neutral IR / Ossie
   -> source extractor
   -> neutral semantic IR
   -> conservative expression translation
-  -> OSI schema validation
-  -> generated model and conversion manifest
-  -> review and copy to semantic/models/
+  -> deterministic raw OSI and official validation
+  -> audited LLM review patch
+  -> deterministic patch application and readiness validation
+  -> optional Snowflake metadata/expression verification
+  -> final model and clean automatic promotion
 ```
 
 ## Components
@@ -35,6 +37,7 @@ Power BI / Tableau / JSON / YAML / neutral IR / Ossie
 | `.github/skills/snowflake-analysis/` | Guides setup, semantic lookup, querying, validation, and response. |
 | `.github/skills/osi-semantic-model-builder/` | Converts BI semantic exports into OSI models. |
 | `data_agent/semantic/` | Loads, searches, validates, converts, and compiles semantic models. |
+| `ossie-main/` | Pinned official Apache Ossie schema, validator, examples, and converter guidance. |
 | `data_agent/bi/` | Extracts Power BI, Tableau, and generic metadata to neutral IR. |
 | `data_agent/tools/snowflake.py` | Connects with browser SSO and runs bounded read-only operations. |
 | `data_agent/security/sql.py` | Parses Snowflake SQL and rejects unsupported operations. |
@@ -57,4 +60,3 @@ These boundaries are surfaced as errors or manifest review items instead of bein
 Browser SSO, a configured read-only role, SQL parsing, explicit columns, parameterized values,
 query timeouts, and row/byte limits remain part of the local workflow. They keep example and
 development use predictable without requiring a separate runtime platform.
-

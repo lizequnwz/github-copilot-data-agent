@@ -49,9 +49,11 @@ Tableau `.tds` onboarding path, and expected responses.
 
 ## Try the offline walkthrough
 
-Install the base dependencies and run the complete example without Snowflake:
+Initialize the pinned Apache Ossie dependency, install the base dependencies, and run the complete
+example without Snowflake:
 
 ```bash
+git submodule update --init --recursive
 uv sync --extra dev
 uv run python scripts/demo_analysis.py
 ```
@@ -81,9 +83,10 @@ before the first connection and uses browser SSO.
 
 ## Build an OSI model from BI metadata
 
-The `osi-semantic-model-builder` skill is the model onboarding path. Its bundled command detects
-the source, extracts neutral semantic IR, translates supported expressions, validates the OSI
-document, and writes a model plus conversion manifest.
+The `osi-semantic-model-builder` skill is the model onboarding path. Its bundled command first
+creates a deterministic raw model using the pinned official schema and validator. The agent then
+creates an audited review patch, which Python applies and validates before producing or promoting
+the final model.
 
 ```bash
 # Power BI TMDL
@@ -101,10 +104,12 @@ uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py \
   tests/fixtures/generic/sales.yaml --model-name demo_generic
 ```
 
-Each command writes `semantic/generated/<model>.osi.yaml` and
-`semantic/generated/<model>.conversion.json`. The manifest shows physical mapping gaps,
-unsupported expressions, and review actions. See [Semantic models](docs/SEMANTIC_MODELS.md) for
-the supported formats and Tableau mapping example.
+Each first-stage command writes `semantic/generated/<model>.raw.osi.yaml` and
+`semantic/generated/<model>.conversion.json`. After review, rerun it with
+`--review-patch semantic/generated/<model>.review.patch.json`. Clean results produce
+`semantic/generated/<model>.osi.yaml` and promote to `semantic/models/<model>.yaml`. Snowflake
+verification is optional through `--verify-snowflake`. See
+[Semantic models](docs/SEMANTIC_MODELS.md) for the complete process.
 
 ## Project map
 
@@ -117,7 +122,7 @@ the supported formats and Tableau mapping example.
 data_agent/                         Local semantic, Snowflake, validation, and report helpers
 semantic/models/                    OSI models searched by the analysis agent
 semantic/generated/                 Replaceable conversion output
-semantic/schemas/                   Vendored Apache Ossie schema
+ossie-main/                         Pinned Apache Ossie submodule: schema, validator, examples
 examples/                           Source mappings and walkthrough inputs
 reports/generated/                  Local generated output
 scripts/                            Friendly example and conversion entry points

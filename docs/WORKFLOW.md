@@ -30,11 +30,11 @@ The agent first selects **Ask Data** or **Semantic Setup**, then chooses the sma
 ## Visual workflow guides
 
 - [Business question to validated answer](diagrams/data-question-workflow.html) shows how a scoped
-  question moves through the shared semantic layer, connection confirmation, read-only Snowflake
-  execution, result validation, and reporting.
+  question moves through interpretation, semantic compilation, connection confirmation, bounded
+  read-only Snowflake execution, result-grain validation, and reporting.
 - [Semantic layer creation and review](diagrams/semantic-layer-review.html) shows the normal BI
-  conversion, business and analyst review, audited Apply operation, validation, and promotion
-  path.
+  intake, deterministic conversion, object-level refresh impact, parallel Business and Analyst
+  views, audited decisions, competency-gated validation, and promotion path.
 
 Both guides are self-contained HTML files with light/dark themes and image export. Their editable
 Archify sources live beside them as

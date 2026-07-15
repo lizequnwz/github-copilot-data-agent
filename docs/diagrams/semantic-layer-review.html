@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="generator" content="archify 2.10.0">
-  <title>Semantic Layer Creation and Review Diagram</title>
+  <title>Semantic Setup: Import, Review, and Promote Diagram</title>
   <script>
     // Resolve the theme before first paint so light-preference users don't
     // see a dark flash. The toolbar script below re-applies with UI state.
@@ -525,14 +525,14 @@
     <div class="header">
       <div class="header-row">
         <div class="pulse-dot"></div>
-        <h1>Semantic Layer Creation and Review</h1>
+        <h1>Semantic Setup: Import, Review, and Promote</h1>
       </div>
-      <p class="subtitle">BI export to audited, validated, analysis-ready Ossie model</p>
+      <p class="subtitle">Deterministic conversion, object-level refresh impact, guided decisions, and competency-gated promotion</p>
     </div>
 
     <!-- Main Diagram -->
     <div class="diagram-container">
-      <svg viewBox="0 0 720 776" role="img" aria-label="Semantic Layer Creation and Review — BI export to audited, validated, analysis-ready Ossie model (workflow diagram)">
+      <svg viewBox="0 0 720 776" role="img" aria-label="Semantic Setup: Import, Review, and Promote — Deterministic conversion, object-level refresh impact, guided decisions, and competency-gated promotion (workflow diagram)">
         <!-- Definitions -->
         <defs>
           <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -557,7 +557,7 @@
 
         <!-- Swimlanes -->
         <rect x="40" y="52" width="640" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="74" class="t-dim" font-size="10" font-weight="600">01 / Business user</text>
+        <text x="54" y="74" class="t-dim" font-size="10" font-weight="600">01 / Business reviewer</text>
 
         <rect x="40" y="176" width="640" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="198" class="t-dim" font-size="10" font-weight="600">02 / Data analyst</text>
@@ -566,94 +566,112 @@
         <text x="54" y="322" class="t-dim" font-size="10" font-weight="600">03 / Data agent + deterministic tools</text>
 
         <rect x="40" y="424" width="640" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="446" class="t-dim" font-size="10" font-weight="600">04 / Review and model artifacts</text>
+        <text x="54" y="446" class="t-dim" font-size="10" font-weight="600">04 / Versioned review and model artifacts</text>
 
         <rect x="40" y="548" width="640" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <rect x="46" y="554" width="628" height="92" rx="8" class="c-security-group" stroke-width="1"/>
-        <text x="54" y="570" class="t-security" font-size="10" font-weight="600">EX / Unresolved review loop</text>
+        <text x="54" y="570" class="t-security" font-size="10" font-weight="600">EX / Unresolved or failed validation</text>
 
         <!-- Phase headers -->
         <line x1="42" y1="35" x2="266" y2="35" class="a-default" stroke-width="1.1"/>
         <rect x="42" y="27" width="224" height="16" rx="4" class="c-mask"/>
-        <text x="154" y="39" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">Source + conversion</text>
-        <line x1="254" y1="35" x2="476" y2="35" class="a-emphasis" stroke-width="1.1"/>
+        <text x="154" y="39" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">Intake</text>
+        <line x1="254" y1="35" x2="476" y2="35" class="a-dashed" stroke-width="1.1"/>
         <rect x="254" y="27" width="222" height="16" rx="4" class="c-mask"/>
-        <text x="365" y="39" class="t-backend" font-size="8" font-weight="600" text-anchor="middle">Human review</text>
-        <line x1="454" y1="35" x2="671" y2="35" class="a-dashed" stroke-width="1.1"/>
-        <rect x="454" y="27" width="217" height="16" rx="4" class="c-mask"/>
-        <text x="562.5" y="39" class="t-messagebus" font-size="8" font-weight="600" text-anchor="middle">Validation + promotion</text>
+        <text x="365" y="39" class="t-messagebus" font-size="8" font-weight="600" text-anchor="middle">Generate + compare</text>
+        <line x1="454" y1="35" x2="546" y2="35" class="a-emphasis" stroke-width="1.1"/>
+        <rect x="454" y="27" width="92" height="16" rx="4" class="c-mask"/>
+        <text x="500" y="39" class="t-backend" font-size="8" font-weight="600" text-anchor="middle">Guided review</text>
+        <line x1="579" y1="35" x2="671" y2="35" class="a-security" stroke-width="1.1"/>
+        <rect x="579" y="27" width="92" height="16" rx="4" class="c-mask"/>
+        <text x="625" y="39" class="t-security" font-size="8" font-weight="600" text-anchor="middle">Promote</text>
 
         <!-- Workflow groups -->
-        <rect x="250" y="90" width="300" height="58" rx="9" class="c-lane" stroke-width="1"/>
-        <text x="260" y="104" class="t-backend" font-size="7" font-weight="600">Meaning and approval</text>
-        <rect x="170" y="338" width="310" height="58" rx="9" class="c-lane" stroke-width="1"/>
-        <text x="180" y="352" class="t-messagebus" font-size="7" font-weight="600">Audited execution</text>
+        <rect x="450" y="90" width="100" height="58" rx="9" class="c-lane" stroke-width="1"/>
+        <text x="460" y="104" class="t-backend" font-size="7" font-weight="600">Business view</text>
+        <rect x="450" y="214" width="100" height="58" rx="9" class="c-lane" stroke-width="1"/>
+        <text x="460" y="228" class="t-backend" font-size="7" font-weight="600">Analyst view</text>
+        <rect x="250" y="338" width="425" height="58" rx="9" class="c-lane" stroke-width="1"/>
+        <text x="260" y="352" class="t-messagebus" font-size="7" font-weight="600">Deterministic + audited</text>
 
         <!-- Edge paths -->
-        <path d="M 88 269 L 88 290 L 220 290 L 220 333" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 220 333 L 220 228 L 300 228 L 300 153" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 300 153 L 300 166 L 430 166 L 430 217" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 430 269 L 430 290 L 500 290 L 500 333" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 500 333 L 500 228 L 625 228 L 625 145" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 625 145 L 625 290 L 625 290 L 625 457" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 220 401 L 220 414 L 220 414 L 220 465" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path d="M 500 401 L 500 414 L 500 414 L 500 465" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path d="M 546 367 L 692 367 L 692 615 L 671 615" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path d="M 88 145 L 88 166 L 220 166 L 220 217" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 220 269 L 220 290 L 300 290 L 300 341" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 300 393 L 300 414 L 300 414 L 300 465" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path d="M 300 393 L 300 414 L 430 414 L 430 465" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 430 465 L 430 57 L 500 57 L 500 153" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 430 465 L 430 181 L 500 181 L 500 277" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 454 119 L 380 119 L 380 530 L 500 530 L 500 517" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path d="M 500 277 L 500 352 L 500 352 L 500 465" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path d="M 500 517 L 500 540 L 700 540 L 700 119 L 671 119" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path d="M 625 145 L 625 228 L 625 228 L 625 333" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 625 401 L 625 414 L 625 414 L 625 457" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 671 367 L 692 367 L 692 615 L 671 615" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
 
         <!-- Nodes -->
-        <rect x="42" y="217" width="92" height="52" rx="6" class="c-mask"/>
-        <rect x="42" y="217" width="92" height="52" rx="6" class="c-external" stroke-width="1.5"/>
-        <text x="88" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Export source</text>
-        <text x="88" y="255" class="t-muted" font-size="8" text-anchor="middle">Power BI / Tableau / YAML</text>
+        <rect x="42" y="93" width="92" height="52" rx="6" class="c-mask"/>
+        <rect x="42" y="93" width="92" height="52" rx="6" class="c-external" stroke-width="1.5"/>
+        <text x="88" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Setup intake</text>
+        <text x="88" y="131" class="t-muted" font-size="8" text-anchor="middle">domain / owner / questions</text>
 
-        <rect x="174" y="333" width="92" height="68" rx="6" class="c-mask"/>
-        <rect x="174" y="333" width="92" height="68" rx="6" class="c-backend" stroke-width="1.5"/>
-        <text x="220" y="354" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Convert</text>
-        <text x="220" y="371" class="t-muted" font-size="8" text-anchor="middle">source → raw OSI</text>
-        <text x="220" y="389" class="t-backend" font-size="7" text-anchor="middle">official validator</text>
+        <rect x="174" y="217" width="92" height="52" rx="6" class="c-mask"/>
+        <rect x="174" y="217" width="92" height="52" rx="6" class="c-external" stroke-width="1.5"/>
+        <text x="220" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Export + map</text>
+        <text x="220" y="255" class="t-muted" font-size="8" text-anchor="middle">BI metadata + sources</text>
 
-        <rect x="254" y="85" width="92" height="68" rx="6" class="c-mask"/>
-        <rect x="254" y="85" width="92" height="68" rx="6" class="c-frontend" stroke-width="1.5"/>
-        <text x="300" y="106" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Review meaning</text>
-        <text x="300" y="123" class="t-muted" font-size="8" text-anchor="middle">scope / exclusions / examples</text>
-        <text x="300" y="141" class="t-frontend" font-size="7" text-anchor="middle">browser workspace</text>
+        <rect x="254" y="341" width="92" height="52" rx="6" class="c-mask"/>
+        <rect x="254" y="341" width="92" height="52" rx="6" class="c-backend" stroke-width="1.5"/>
+        <text x="300" y="362" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Convert</text>
+        <text x="300" y="379" class="t-muted" font-size="8" text-anchor="middle">deterministic + official schema</text>
 
-        <rect x="384" y="217" width="92" height="52" rx="6" class="c-mask"/>
-        <rect x="384" y="217" width="92" height="52" rx="6" class="c-frontend" stroke-width="1.5"/>
-        <text x="430" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Check mappings</text>
-        <text x="430" y="255" class="t-muted" font-size="8" text-anchor="middle">keys / joins / expressions</text>
+        <rect x="400" y="465" width="60" height="52" rx="6" class="c-mask"/>
+        <rect x="400" y="465" width="60" height="52" rx="6" class="c-database" stroke-width="1.5"/>
+        <text x="430" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Diff</text>
+        <text x="430" y="503" class="t-muted" font-size="8" text-anchor="middle">breaking / semantic / metadata</text>
 
-        <rect x="454" y="333" width="92" height="68" rx="6" class="c-mask"/>
-        <rect x="454" y="333" width="92" height="68" rx="6" class="c-security" stroke-width="1.5"/>
-        <text x="500" y="354" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Apply</text>
-        <text x="500" y="371" class="t-muted" font-size="8" text-anchor="middle">compile audited patch</text>
-        <text x="500" y="389" class="t-security" font-size="7" text-anchor="middle">raw hash enforced</text>
+        <rect x="454" y="85" width="92" height="68" rx="6" class="c-mask"/>
+        <rect x="454" y="85" width="92" height="68" rx="6" class="c-frontend" stroke-width="1.5"/>
+        <text x="500" y="106" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Review meaning</text>
+        <text x="500" y="123" class="t-muted" font-size="8" text-anchor="middle">scope / synonyms / examples</text>
+        <text x="500" y="141" class="t-frontend" font-size="7" text-anchor="middle">guided controls</text>
+
+        <rect x="454" y="209" width="92" height="68" rx="6" class="c-mask"/>
+        <rect x="454" y="209" width="92" height="68" rx="6" class="c-frontend" stroke-width="1.5"/>
+        <text x="500" y="230" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Review sources</text>
+        <text x="500" y="247" class="t-muted" font-size="8" text-anchor="middle">sources / keys / joins / SQL</text>
+        <text x="500" y="265" class="t-frontend" font-size="7" text-anchor="middle">guided controls</text>
+
+        <rect x="579" y="333" width="92" height="68" rx="6" class="c-mask"/>
+        <rect x="579" y="333" width="92" height="68" rx="6" class="c-security" stroke-width="1.5"/>
+        <text x="625" y="354" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Apply gates</text>
+        <text x="625" y="371" class="t-muted" font-size="8" text-anchor="middle">Ossie / readiness / competency</text>
+        <text x="625" y="389" class="t-security" font-size="7" text-anchor="middle">optional Snowflake</text>
+
+        <rect x="254" y="465" width="92" height="52" rx="6" class="c-mask"/>
+        <rect x="254" y="465" width="92" height="52" rx="6" class="c-database" stroke-width="1.5"/>
+        <text x="300" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Raw + manifest</text>
+        <text x="300" y="503" class="t-muted" font-size="8" text-anchor="middle">repeatable source evidence</text>
+
+        <rect x="470" y="465" width="60" height="52" rx="6" class="c-mask"/>
+        <rect x="470" y="465" width="60" height="52" rx="6" class="c-database" stroke-width="1.5"/>
+        <text x="500" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Decisions</text>
+        <text x="500" y="503" class="t-muted" font-size="8" text-anchor="middle">draft + audited operations</text>
 
         <rect x="579" y="93" width="92" height="52" rx="6" class="c-mask"/>
         <rect x="579" y="93" width="92" height="52" rx="6" class="c-security" stroke-width="1.5"/>
         <text x="625" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Confirm target</text>
-        <text x="625" y="131" class="t-muted" font-size="8" text-anchor="middle">promotion is explicit</text>
+        <text x="625" y="131" class="t-muted" font-size="8" text-anchor="middle">explicit promotion destination</text>
 
         <rect x="579" y="457" width="92" height="68" rx="6" class="c-mask"/>
         <rect x="579" y="457" width="92" height="68" rx="6" class="c-database" stroke-width="1.5"/>
-        <text x="625" y="478" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Ready model</text>
+        <text x="625" y="478" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Promoted model</text>
         <text x="625" y="495" class="t-muted" font-size="8" text-anchor="middle">semantic/models/*.yaml</text>
-        <text x="625" y="513" class="t-database" font-size="7" text-anchor="middle">analysis ready</text>
-
-        <rect x="174" y="465" width="92" height="52" rx="6" class="c-mask"/>
-        <rect x="174" y="465" width="92" height="52" rx="6" class="c-database" stroke-width="1.5"/>
-        <text x="220" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Raw + manifest</text>
-        <text x="220" y="503" class="t-muted" font-size="8" text-anchor="middle">repeatable evidence</text>
-
-        <rect x="454" y="465" width="92" height="52" rx="6" class="c-mask"/>
-        <rect x="454" y="465" width="92" height="52" rx="6" class="c-database" stroke-width="1.5"/>
-        <text x="500" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Audit trail</text>
-        <text x="500" y="503" class="t-muted" font-size="8" text-anchor="middle">before / after audit</text>
+        <text x="625" y="513" class="t-database" font-size="7" text-anchor="middle">competency passed</text>
 
         <rect x="579" y="581" width="92" height="68" rx="6" class="c-mask"/>
         <rect x="579" y="581" width="92" height="68" rx="6" class="c-messagebus" stroke-width="1.5"/>
         <text x="625" y="602" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Needs evidence</text>
-        <text x="625" y="619" class="t-muted" font-size="8" text-anchor="middle">assumption or failed check</text>
+        <text x="625" y="619" class="t-muted" font-size="8" text-anchor="middle">draft and prior model retained</text>
         <text x="625" y="637" class="t-messagebus" font-size="7" text-anchor="middle">no promotion</text>
 
         <!-- Edge labels -->
@@ -661,9 +679,12 @@
 
 
 
-        <rect x="545.5" y="208" width="34" height="14" rx="3" class="c-mask"/>
-        <text x="562.5" y="218" class="t-backend" font-size="8" text-anchor="middle">clean</text>
 
+
+
+
+        <rect x="609" y="270" width="82" height="14" rx="3" class="c-mask"/>
+        <text x="650" y="280" class="t-security" font-size="8" text-anchor="middle">review complete</text>
 
 
         <rect x="670.2" y="471" width="43.6" height="14" rx="3" class="c-mask"/>
@@ -689,33 +710,33 @@
       <div class="card">
         <div class="card-header">
           <div class="card-dot cyan"></div>
-          <h3>Human responsibilities</h3>
+          <h3>One guided review</h3>
         </div>
         <ul>
-          <li>&bull; Business users own meaning, exclusions, synonyms, and expected questions</li>
-          <li>&bull; Analysts own physical mappings, keys, relationships, grain, and expressions</li>
+          <li>&bull; Business and Analyst filters expose different decisions over one draft</li>
+          <li>&bull; Translation cards update executable expressions and provenance without raw JSON editing</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot violet"></div>
-          <h3>Audit contract</h3>
+          <h3>Audited lifecycle</h3>
         </div>
         <ul>
-          <li>&bull; Every change carries rationale, evidence, confidence, and assumptions</li>
-          <li>&bull; Drafts never modify OSI; Apply compiles the complete decisions artifact</li>
+          <li>&bull; Every item records rationale, evidence, confidence, assumptions, and before/after values</li>
+          <li>&bull; Selected bulk decisions still emit one audited operation per semantic object</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot emerald"></div>
-          <h3>Promotion rule</h3>
+          <h3>Safe refresh + promotion</h3>
         </div>
         <ul>
-          <li>&bull; Official and readiness validation must pass</li>
-          <li>&bull; Unresolved assumptions or verification failures preserve artifacts without promotion</li>
+          <li>&bull; Show object-level impact before review and reject stale decisions after regeneration</li>
+          <li>&bull; Failed validation preserves drafts and the previously promoted model</li>
         </ul>
       </div>
     </div>

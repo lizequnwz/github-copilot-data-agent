@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="generator" content="archify 2.10.0">
-  <title>Business Question to Validated Answer Diagram</title>
+  <title>Ask Data: Business Question to Validated Answer Diagram</title>
   <script>
     // Resolve the theme before first paint so light-preference users don't
     // see a dark flash. The toolbar script below re-applies with UI state.
@@ -525,14 +525,14 @@
     <div class="header">
       <div class="header-row">
         <div class="pulse-dot"></div>
-        <h1>Business Question to Validated Answer</h1>
+        <h1>Ask Data: Business Question to Validated Answer</h1>
       </div>
-      <p class="subtitle">Semantic resolution, read-only Snowflake execution, and reproducible reporting</p>
+      <p class="subtitle">Interpretation, semantic compilation, bounded Snowflake execution, and reproducible reporting</p>
     </div>
 
     <!-- Main Diagram -->
     <div class="diagram-container">
-      <svg viewBox="0 0 720 900" role="img" aria-label="Business Question to Validated Answer — Semantic resolution, read-only Snowflake execution, and reproducible reporting (workflow diagram)">
+      <svg viewBox="0 0 720 900" role="img" aria-label="Ask Data: Business Question to Validated Answer — Interpretation, semantic compilation, bounded Snowflake execution, and reproducible reporting (workflow diagram)">
         <!-- Definitions -->
         <defs>
           <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -563,7 +563,7 @@
         <text x="54" y="198" class="t-dim" font-size="10" font-weight="600">02 / Data agent</text>
 
         <rect x="40" y="300" width="640" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="322" class="t-dim" font-size="10" font-weight="600">03 / Shared semantic layer</text>
+        <text x="54" y="322" class="t-dim" font-size="10" font-weight="600">03 / Promoted semantic model</text>
 
         <rect x="40" y="424" width="640" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="446" class="t-dim" font-size="10" font-weight="600">04 / Read-only Snowflake</text>
@@ -573,87 +573,98 @@
 
         <rect x="40" y="672" width="640" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <rect x="46" y="678" width="628" height="92" rx="8" class="c-security-group" stroke-width="1"/>
-        <text x="54" y="694" class="t-security" font-size="10" font-weight="600">EX / Clarification or recovery</text>
+        <text x="54" y="694" class="t-security" font-size="10" font-weight="600">EX / Clarification or model enhancement</text>
 
         <!-- Phase headers -->
-        <line x1="42" y1="35" x2="346" y2="35" class="a-default" stroke-width="1.1"/>
-        <rect x="42" y="27" width="304" height="16" rx="4" class="c-mask"/>
-        <text x="194" y="39" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">Question + definition</text>
-        <line x1="384" y1="35" x2="476" y2="35" class="a-security" stroke-width="1.1"/>
-        <rect x="384" y="27" width="92" height="16" rx="4" class="c-mask"/>
-        <text x="430" y="39" class="t-security" font-size="8" font-weight="600" text-anchor="middle">Execute</text>
-        <line x1="454" y1="35" x2="671" y2="35" class="a-emphasis" stroke-width="1.1"/>
-        <rect x="454" y="27" width="217" height="16" rx="4" class="c-mask"/>
-        <text x="562.5" y="39" class="t-backend" font-size="8" font-weight="600" text-anchor="middle">Validate + communicate</text>
+        <line x1="42" y1="35" x2="266" y2="35" class="a-default" stroke-width="1.1"/>
+        <rect x="42" y="27" width="224" height="16" rx="4" class="c-mask"/>
+        <text x="154" y="39" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">Interpret</text>
+        <line x1="254" y1="35" x2="476" y2="35" class="a-security" stroke-width="1.1"/>
+        <rect x="254" y="27" width="222" height="16" rx="4" class="c-mask"/>
+        <text x="365" y="39" class="t-security" font-size="8" font-weight="600" text-anchor="middle">Resolve + compile</text>
+        <line x1="454" y1="35" x2="546" y2="35" class="a-dashed" stroke-width="1.1"/>
+        <rect x="454" y="27" width="92" height="16" rx="4" class="c-mask"/>
+        <text x="500" y="39" class="t-messagebus" font-size="8" font-weight="600" text-anchor="middle">Execute</text>
+        <line x1="579" y1="35" x2="671" y2="35" class="a-emphasis" stroke-width="1.1"/>
+        <rect x="579" y="27" width="92" height="16" rx="4" class="c-mask"/>
+        <text x="625" y="39" class="t-backend" font-size="8" font-weight="600" text-anchor="middle">Communicate</text>
 
         <!-- Workflow groups -->
 
 
         <!-- Edge paths -->
-        <path d="M 88 145 L 88 166 L 220 166 L 220 217" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 220 269 L 220 290 L 300 290 L 300 333" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 88 145 L 88 166 L 220 166 L 220 209" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 220 277 L 220 290 L 300 290 L 300 333" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path d="M 300 333 L 300 290 L 430 290 L 430 277" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path d="M 430 209 L 430 166 L 500 166 L 500 153" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 500 153 L 500 290 L 500 290 L 500 465" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 500 517 L 500 538 L 500 538 L 500 589" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 500 153 L 500 290 L 500 290 L 500 457" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 500 525 L 500 538 L 500 538 L 500 589" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path d="M 546 615 L 579 615" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 220 269 L 220 476 L 300 476 L 300 713" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path d="M 500 641 L 500 662 L 500 662 L 500 713" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path d="M 220 277 L 220 476 L 220 476 L 220 713" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path d="M 430 277 L 430 476 L 430 476 L 430 713" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path d="M 500 641 L 500 662 L 625 662 L 625 713" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
 
         <!-- Nodes -->
         <rect x="42" y="93" width="92" height="52" rx="6" class="c-mask"/>
         <rect x="42" y="93" width="92" height="52" rx="6" class="c-external" stroke-width="1.5"/>
         <text x="88" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Ask question</text>
-        <text x="88" y="131" class="t-muted" font-size="8" text-anchor="middle">metric / filters / period</text>
+        <text x="88" y="131" class="t-muted" font-size="8" text-anchor="middle">business outcome + output</text>
 
-        <rect x="174" y="217" width="92" height="52" rx="6" class="c-mask"/>
-        <rect x="174" y="217" width="92" height="52" rx="6" class="c-backend" stroke-width="1.5"/>
-        <text x="220" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Resolve scope</text>
-        <text x="220" y="255" class="t-muted" font-size="8" text-anchor="middle">population + output</text>
+        <rect x="174" y="209" width="92" height="68" rx="6" class="c-mask"/>
+        <rect x="174" y="209" width="92" height="68" rx="6" class="c-backend" stroke-width="1.5"/>
+        <text x="220" y="230" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Interpret</text>
+        <text x="220" y="247" class="t-muted" font-size="8" text-anchor="middle">metric / population / grain</text>
+        <text x="220" y="265" class="t-backend" font-size="7" text-anchor="middle">compact card</text>
 
         <rect x="254" y="333" width="92" height="68" rx="6" class="c-mask"/>
         <rect x="254" y="333" width="92" height="68" rx="6" class="c-database" stroke-width="1.5"/>
-        <text x="300" y="354" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Find model</text>
+        <text x="300" y="354" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Resolve model</text>
         <text x="300" y="371" class="t-muted" font-size="8" text-anchor="middle">definitions + joins</text>
         <text x="300" y="389" class="t-database" font-size="7" text-anchor="middle">semantic/models</text>
 
         <rect x="384" y="209" width="92" height="68" rx="6" class="c-mask"/>
         <rect x="384" y="209" width="92" height="68" rx="6" class="c-security" stroke-width="1.5"/>
-        <text x="430" y="230" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Validate SQL</text>
-        <text x="430" y="247" class="t-muted" font-size="8" text-anchor="middle">bounded read-only query</text>
-        <text x="430" y="265" class="t-security" font-size="7" text-anchor="middle">no SELECT *</text>
+        <text x="430" y="230" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Compile plan</text>
+        <text x="430" y="247" class="t-muted" font-size="8" text-anchor="middle">time / filters / order</text>
+        <text x="430" y="265" class="t-security" font-size="7" text-anchor="middle">validate SQL</text>
 
         <rect x="454" y="85" width="92" height="68" rx="6" class="c-mask"/>
         <rect x="454" y="85" width="92" height="68" rx="6" class="c-security" stroke-width="1.5"/>
         <text x="500" y="106" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Confirm</text>
-        <text x="500" y="123" class="t-muted" font-size="8" text-anchor="middle">non-secret context</text>
+        <text x="500" y="123" class="t-muted" font-size="8" text-anchor="middle">non-secret settings</text>
         <text x="500" y="141" class="t-security" font-size="7" text-anchor="middle">first connection</text>
 
-        <rect x="454" y="465" width="92" height="52" rx="6" class="c-mask"/>
-        <rect x="454" y="465" width="92" height="52" rx="6" class="c-cloud" stroke-width="1.5"/>
-        <text x="500" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Execute query</text>
-        <text x="500" y="503" class="t-muted" font-size="8" text-anchor="middle">browser SSO + read-only role</text>
+        <rect x="454" y="457" width="92" height="68" rx="6" class="c-mask"/>
+        <rect x="454" y="457" width="92" height="68" rx="6" class="c-cloud" stroke-width="1.5"/>
+        <text x="500" y="478" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Execute query</text>
+        <text x="500" y="495" class="t-muted" font-size="8" text-anchor="middle">browser SSO + read-only</text>
+        <text x="500" y="513" class="t-cloud" font-size="7" text-anchor="middle">max_rows + 1</text>
 
         <rect x="454" y="589" width="92" height="52" rx="6" class="c-mask"/>
         <rect x="454" y="589" width="92" height="52" rx="6" class="c-security" stroke-width="1.5"/>
-        <text x="500" y="610" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Check rows</text>
-        <text x="500" y="627" class="t-muted" font-size="8" text-anchor="middle">shape / types / bounds</text>
+        <text x="500" y="610" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Check result</text>
+        <text x="500" y="627" class="t-muted" font-size="8" text-anchor="middle">shape / grain / truncation</text>
 
         <rect x="579" y="581" width="92" height="68" rx="6" class="c-mask"/>
         <rect x="579" y="581" width="92" height="68" rx="6" class="c-frontend" stroke-width="1.5"/>
         <text x="625" y="602" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Answer</text>
         <text x="625" y="619" class="t-muted" font-size="8" text-anchor="middle">definition / SQL / caveats</text>
-        <text x="625" y="637" class="t-frontend" font-size="7" text-anchor="middle">lead with answer</text>
+        <text x="625" y="637" class="t-frontend" font-size="7" text-anchor="middle">optional report</text>
 
-        <rect x="254" y="713" width="92" height="52" rx="6" class="c-mask"/>
-        <rect x="254" y="713" width="92" height="52" rx="6" class="c-messagebus" stroke-width="1.5"/>
-        <text x="300" y="734" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Clarify</text>
-        <text x="300" y="751" class="t-muted" font-size="8" text-anchor="middle">only when result changes</text>
+        <rect x="174" y="713" width="92" height="52" rx="6" class="c-mask"/>
+        <rect x="174" y="713" width="92" height="52" rx="6" class="c-messagebus" stroke-width="1.5"/>
+        <text x="220" y="734" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Clarify</text>
+        <text x="220" y="751" class="t-muted" font-size="8" text-anchor="middle">material business choice</text>
 
-        <rect x="454" y="713" width="92" height="52" rx="6" class="c-mask"/>
-        <rect x="454" y="713" width="92" height="52" rx="6" class="c-messagebus" stroke-width="1.5"/>
-        <text x="500" y="734" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Fix and retry</text>
-        <text x="500" y="751" class="t-muted" font-size="8" text-anchor="middle">config / SQL / result issue</text>
+        <rect x="372" y="713" width="116" height="52" rx="6" class="c-mask"/>
+        <rect x="372" y="713" width="116" height="52" rx="6" class="c-messagebus" stroke-width="1.5"/>
+        <text x="430" y="734" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Narrow / enhance</text>
+        <text x="430" y="751" class="t-muted" font-size="8" text-anchor="middle">unsupported semantic operation</text>
+
+        <rect x="579" y="713" width="92" height="52" rx="6" class="c-mask"/>
+        <rect x="579" y="713" width="92" height="52" rx="6" class="c-messagebus" stroke-width="1.5"/>
+        <text x="625" y="734" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Fix and retry</text>
+        <text x="625" y="751" class="t-muted" font-size="8" text-anchor="middle">config / SQL / result issue</text>
 
         <!-- Edge labels -->
 
@@ -663,10 +674,12 @@
 
 
 
-        <rect x="211.8" y="456" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
-        <text x="260" y="466" class="t-database" font-size="8" text-anchor="middle">material ambiguity</text>
-        <rect x="478.2" y="642" width="43.6" height="14" rx="3" class="c-mask"/>
-        <text x="500" y="652" class="t-security" font-size="8" text-anchor="middle">invalid</text>
+        <rect x="171.8" y="456" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
+        <text x="220" y="466" class="t-database" font-size="8" text-anchor="middle">material ambiguity</text>
+        <rect x="398.6" y="529" width="62.8" height="14" rx="3" class="c-mask"/>
+        <text x="430" y="539" class="t-security" font-size="8" text-anchor="middle">unsupported</text>
+        <rect x="541.2" y="653" width="43.6" height="14" rx="3" class="c-mask"/>
+        <text x="563" y="663" class="t-security" font-size="8" text-anchor="middle">invalid</text>
 
         <!-- Legend -->
         <text x="175" y="800" class="t-primary" font-size="10" font-weight="600">Legend</text>
@@ -688,33 +701,33 @@
       <div class="card">
         <div class="card-header">
           <div class="card-dot cyan"></div>
-          <h3>Definition first</h3>
+          <h3>Interpretation contract</h3>
         </div>
         <ul>
-          <li>&bull; Search shared semantic models before warehouse discovery</li>
-          <li>&bull; Never invent a metric, population, relationship, or business rule</li>
+          <li>&bull; Show metric, population, dimensions, filters, period, expected result grain, model, and output</li>
+          <li>&bull; Proceed without another approval when business definitions are unambiguous</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot rose"></div>
-          <h3>Execution controls</h3>
+          <h3>Compiler + execution contract</h3>
         </div>
         <ul>
-          <li>&bull; Show and confirm non-secret Snowflake context before the first connection</li>
-          <li>&bull; Use browser SSO, the configured read-only role, validated SQL, and bounded results</li>
+          <li>&bull; Preserve semantic grain and map it to unique SQL result aliases</li>
+          <li>&bull; Compile parameterized filters and time bounds; fetch one extra row to prove truncation</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot emerald"></div>
-          <h3>Reproducible answer</h3>
+          <h3>Inspectable answer</h3>
         </div>
         <ul>
-          <li>&bull; Validate rows before interpretation or report generation</li>
-          <li>&bull; Return definition, filters, period, model, query ID, role, SQL, and caveats</li>
+          <li>&bull; Return resolved period, semantic and result grain, model, query details, SQL, and caveats</li>
+          <li>&bull; Never bypass an unsupported semantic request with ad hoc SQL</li>
         </ul>
       </div>
     </div>

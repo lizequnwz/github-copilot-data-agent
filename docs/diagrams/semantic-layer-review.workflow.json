@@ -2,112 +2,123 @@
   "schema_version": 1,
   "diagram_type": "workflow",
   "meta": {
-    "title": "Semantic Layer Creation and Review",
-    "subtitle": "BI export to audited, validated, analysis-ready Ossie model",
+    "title": "Semantic Setup: Import, Review, and Promote",
+    "subtitle": "Deterministic conversion, object-level refresh impact, guided decisions, and competency-gated promotion",
     "output": "docs/diagrams/semantic-layer-review.html",
     "animation": "none"
   },
   "lanes": [
-    { "id": "business", "label": "Business user" },
+    { "id": "business", "label": "Business reviewer" },
     { "id": "analyst", "label": "Data analyst" },
     { "id": "agent", "label": "Data agent + deterministic tools" },
-    { "id": "artifacts", "label": "Review and model artifacts" },
-    { "id": "exceptions", "label": "Unresolved review loop", "variant": "exception" }
+    { "id": "artifacts", "label": "Versioned review and model artifacts" },
+    { "id": "exceptions", "label": "Unresolved or failed validation", "variant": "exception" }
   ],
   "phases": [
-    { "id": "intake", "label": "Source + conversion", "fromCol": 0, "toCol": 1 },
-    { "id": "review", "label": "Human review", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
-    { "id": "publish", "label": "Validation + promotion", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+    { "id": "intake", "label": "Intake", "fromCol": 0, "toCol": 1 },
+    { "id": "generate", "label": "Generate + compare", "fromCol": 2, "toCol": 3, "variant": "dashed" },
+    { "id": "review", "label": "Guided review", "fromCol": 4, "toCol": 4, "variant": "emphasis" },
+    { "id": "promote", "label": "Promote", "fromCol": 5, "toCol": 5, "variant": "security" }
   ],
   "groups": [
-    { "id": "business_decisions", "label": "Meaning and approval", "lane": "business", "fromCol": 2, "toCol": 4, "variant": "emphasis" },
-    { "id": "audited_engine", "label": "Audited execution", "lane": "agent", "fromCol": 1, "toCol": 3, "variant": "dashed" }
-  ],
-  "mainPath": [
-    "export",
-    "convert",
-    "business_review",
-    "technical_review",
-    "apply_validate",
-    "confirm_destination",
-    "promoted_model"
+    { "id": "business_decisions", "label": "Business view", "lane": "business", "fromCol": 4, "toCol": 4, "variant": "emphasis" },
+    { "id": "analyst_decisions", "label": "Analyst view", "lane": "analyst", "fromCol": 4, "toCol": 4, "variant": "emphasis" },
+    { "id": "audited_engine", "label": "Deterministic + audited", "lane": "agent", "fromCol": 2, "toCol": 5, "variant": "dashed" }
   ],
   "nodes": [
     {
-      "id": "export",
-      "lane": "analyst",
+      "id": "intake",
+      "lane": "business",
       "col": 0,
       "type": "external",
-      "label": "Export source",
-      "sublabel": "Power BI / Tableau / YAML"
+      "label": "Setup intake",
+      "sublabel": "domain / owner / questions"
+    },
+    {
+      "id": "export",
+      "lane": "analyst",
+      "col": 1,
+      "type": "external",
+      "label": "Export + map",
+      "sublabel": "BI metadata + sources"
     },
     {
       "id": "convert",
       "lane": "agent",
-      "col": 1,
+      "col": 2,
       "type": "backend",
       "label": "Convert",
-      "sublabel": "source → raw OSI",
-      "tag": "official validator"
+      "sublabel": "deterministic + official schema"
+    },
+    {
+      "id": "refresh_diff",
+      "lane": "artifacts",
+      "col": 3,
+      "type": "database",
+      "label": "Diff",
+      "sublabel": "breaking / semantic / metadata",
+      "width": 60
     },
     {
       "id": "business_review",
       "lane": "business",
-      "col": 2,
+      "col": 4,
       "type": "frontend",
       "label": "Review meaning",
-      "sublabel": "scope / exclusions / examples",
-      "tag": "browser workspace"
+      "sublabel": "scope / synonyms / examples",
+      "tag": "guided controls"
     },
     {
-      "id": "technical_review",
+      "id": "analyst_review",
       "lane": "analyst",
-      "col": 3,
+      "col": 4,
       "type": "frontend",
-      "label": "Check mappings",
-      "sublabel": "keys / joins / expressions"
+      "label": "Review sources",
+      "sublabel": "sources / keys / joins / SQL",
+      "tag": "guided controls"
     },
     {
       "id": "apply_validate",
       "lane": "agent",
-      "col": 4,
+      "col": 5,
       "type": "security",
-      "label": "Apply",
-      "sublabel": "compile audited patch",
-      "tag": "raw hash enforced"
+      "label": "Apply gates",
+      "sublabel": "Ossie / readiness / competency",
+      "tag": "optional Snowflake"
     },
     {
-      "id": "confirm_destination",
+      "id": "raw_artifacts",
+      "lane": "artifacts",
+      "col": 2,
+      "type": "database",
+      "label": "Raw + manifest",
+      "sublabel": "repeatable source evidence"
+    },
+    {
+      "id": "decisions",
+      "lane": "artifacts",
+      "col": 4,
+      "type": "database",
+      "label": "Decisions",
+      "sublabel": "draft + audited operations",
+      "width": 60
+    },
+    {
+      "id": "confirm_target",
       "lane": "business",
       "col": 5,
       "type": "security",
       "label": "Confirm target",
-      "sublabel": "promotion is explicit"
+      "sublabel": "explicit promotion destination"
     },
     {
       "id": "promoted_model",
       "lane": "artifacts",
       "col": 5,
       "type": "database",
-      "label": "Ready model",
+      "label": "Promoted model",
       "sublabel": "semantic/models/*.yaml",
-      "tag": "analysis ready"
-    },
-    {
-      "id": "raw_artifacts",
-      "lane": "artifacts",
-      "col": 1,
-      "type": "database",
-      "label": "Raw + manifest",
-      "sublabel": "repeatable evidence"
-    },
-    {
-      "id": "audit_artifacts",
-      "lane": "artifacts",
-      "col": 4,
-      "type": "database",
-      "label": "Audit trail",
-      "sublabel": "before / after audit"
+      "tag": "competency passed"
     },
     {
       "id": "needs_evidence",
@@ -115,44 +126,47 @@
       "col": 5,
       "type": "messagebus",
       "label": "Needs evidence",
-      "sublabel": "assumption or failed check",
+      "sublabel": "draft and prior model retained",
       "tag": "no promotion"
     }
   ],
   "edges": [
+    { "from": "intake", "to": "export", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
     { "from": "export", "to": "convert", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
-    { "from": "convert", "to": "business_review", "variant": "emphasis", "fromSide": "top", "toSide": "bottom", "route": "drop" },
-    { "from": "business_review", "to": "technical_review", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
-    { "from": "technical_review", "to": "apply_validate", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
-    { "from": "apply_validate", "to": "confirm_destination", "label": "clean", "variant": "emphasis", "fromSide": "top", "toSide": "bottom", "route": "drop", "labelSegment": 1 },
-    { "from": "confirm_destination", "to": "promoted_model", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
     { "from": "convert", "to": "raw_artifacts", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "route": "drop" },
-    { "from": "apply_validate", "to": "audit_artifacts", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "from": "convert", "to": "refresh_diff", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "from": "refresh_diff", "to": "business_review", "variant": "emphasis", "fromSide": "top", "toSide": "bottom", "route": "up-channel" },
+    { "from": "refresh_diff", "to": "analyst_review", "variant": "emphasis", "fromSide": "top", "toSide": "bottom", "route": "up-channel" },
+    { "from": "business_review", "to": "decisions", "variant": "dashed", "fromSide": "left", "toSide": "bottom", "via": [[380, 119], [380, 530], [500, 530]] },
+    { "from": "analyst_review", "to": "decisions", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "from": "decisions", "to": "confirm_target", "label": "review complete", "variant": "security", "fromSide": "bottom", "toSide": "right", "via": [[500, 540], [700, 540], [700, 119]], "labelAt": [650, 280] },
+    { "from": "confirm_target", "to": "apply_validate", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "from": "apply_validate", "to": "promoted_model", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
     { "from": "apply_validate", "to": "needs_evidence", "label": "blocked", "variant": "security", "role": "error", "fromSide": "right", "toSide": "right", "route": "outside-right", "labelSegment": 1 }
   ],
   "cards": [
     {
       "dot": "cyan",
-      "title": "Human responsibilities",
+      "title": "One guided review",
       "items": [
-        "Business users own meaning, exclusions, synonyms, and expected questions",
-        "Analysts own physical mappings, keys, relationships, grain, and expressions"
+        "Business and Analyst filters expose different decisions over one draft",
+        "Translation cards update executable expressions and provenance without raw JSON editing"
       ]
     },
     {
       "dot": "violet",
-      "title": "Audit contract",
+      "title": "Audited lifecycle",
       "items": [
-        "Every change carries rationale, evidence, confidence, and assumptions",
-        "Drafts never modify OSI; Apply compiles the complete decisions artifact"
+        "Every item records rationale, evidence, confidence, assumptions, and before/after values",
+        "Selected bulk decisions still emit one audited operation per semantic object"
       ]
     },
     {
       "dot": "emerald",
-      "title": "Promotion rule",
+      "title": "Safe refresh + promotion",
       "items": [
-        "Official and readiness validation must pass",
-        "Unresolved assumptions or verification failures preserve artifacts without promotion"
+        "Show object-level impact before review and reject stale decisions after regeneration",
+        "Failed validation preserves drafts and the previously promoted model"
       ]
     }
   ]

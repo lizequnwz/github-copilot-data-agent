@@ -27,6 +27,20 @@ The agent selects the smallest relevant skill automatically: `snowflake-analysis
 questions, `osi-semantic-model-builder` for semantic onboarding, and
 `analytics-report-generation` for an explicitly requested chart or report.
 
+## Visual workflow guides
+
+- [Business question to validated answer](diagrams/data-question-workflow.html) shows how a scoped
+  question moves through the shared semantic layer, connection confirmation, read-only Snowflake
+  execution, result validation, and reporting.
+- [Semantic layer creation and review](diagrams/semantic-layer-review.html) shows the normal BI
+  conversion, business and analyst review, audited Apply operation, validation, and promotion
+  path.
+
+Both guides are self-contained HTML files with light/dark themes and image export. Their editable
+Archify sources live beside them as
+[`data-question-workflow.workflow.json`](diagrams/data-question-workflow.workflow.json) and
+[`semantic-layer-review.workflow.json`](diagrams/semantic-layer-review.workflow.json).
+
 ## Ask a data question
 
 Select the `data-analytics` Copilot agent and provide the business question in ordinary language:

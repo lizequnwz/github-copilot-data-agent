@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Business Question to Validated Answer",
+    "subtitle": "Semantic resolution, read-only Snowflake execution, and reproducible reporting",
+    "output": "docs/diagrams/data-question-workflow.html",
+    "animation": "none"
+  },
+  "lanes": [
+    { "id": "user", "label": "Business user" },
+    { "id": "agent", "label": "Data agent" },
+    { "id": "semantic", "label": "Shared semantic layer" },
+    { "id": "snowflake", "label": "Read-only Snowflake" },
+    { "id": "result", "label": "Validated result" },
+    { "id": "exceptions", "label": "Clarification or recovery", "variant": "exception" }
+  ],
+  "phases": [
+    { "id": "scope", "label": "Question + definition", "fromCol": 0, "toCol": 2 },
+    { "id": "execute", "label": "Execute", "fromCol": 3, "toCol": 3, "variant": "security" },
+    { "id": "answer", "label": "Validate + communicate", "fromCol": 4, "toCol": 5, "variant": "emphasis" }
+  ],
+  "mainPath": [
+    "question",
+    "resolve_scope",
+    "semantic_model",
+    "validate_sql",
+    "confirm_context",
+    "execute_query",
+    "check_rows",
+    "answer_report"
+  ],
+  "nodes": [
+    {
+      "id": "question",
+      "lane": "user",
+      "col": 0,
+      "type": "external",
+      "label": "Ask question",
+      "sublabel": "metric / filters / period"
+    },
+    {
+      "id": "resolve_scope",
+      "lane": "agent",
+      "col": 1,
+      "type": "backend",
+      "label": "Resolve scope",
+      "sublabel": "population + output"
+    },
+    {
+      "id": "semantic_model",
+      "lane": "semantic",
+      "col": 2,
+      "type": "database",
+      "label": "Find model",
+      "sublabel": "definitions + joins",
+      "tag": "semantic/models"
+    },
+    {
+      "id": "validate_sql",
+      "lane": "agent",
+      "col": 3,
+      "type": "security",
+      "label": "Validate SQL",
+      "sublabel": "bounded read-only query",
+      "tag": "no SELECT *"
+    },
+    {
+      "id": "confirm_context",
+      "lane": "user",
+      "col": 4,
+      "type": "security",
+      "label": "Confirm",
+      "sublabel": "non-secret context",
+      "tag": "first connection"
+    },
+    {
+      "id": "execute_query",
+      "lane": "snowflake",
+      "col": 4,
+      "type": "cloud",
+      "label": "Execute query",
+      "sublabel": "browser SSO + read-only role"
+    },
+    {
+      "id": "check_rows",
+      "lane": "result",
+      "col": 4,
+      "type": "security",
+      "label": "Check rows",
+      "sublabel": "shape / types / bounds"
+    },
+    {
+      "id": "answer_report",
+      "lane": "result",
+      "col": 5,
+      "type": "frontend",
+      "label": "Answer",
+      "sublabel": "definition / SQL / caveats",
+      "tag": "lead with answer"
+    },
+    {
+      "id": "clarify",
+      "lane": "exceptions",
+      "col": 2,
+      "type": "messagebus",
+      "label": "Clarify",
+      "sublabel": "only when result changes"
+    },
+    {
+      "id": "recover",
+      "lane": "exceptions",
+      "col": 4,
+      "type": "messagebus",
+      "label": "Fix and retry",
+      "sublabel": "config / SQL / result issue"
+    }
+  ],
+  "edges": [
+    { "from": "question", "to": "resolve_scope", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "from": "resolve_scope", "to": "semantic_model", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "from": "semantic_model", "to": "validate_sql", "variant": "emphasis", "fromSide": "top", "toSide": "bottom", "route": "drop" },
+    { "from": "validate_sql", "to": "confirm_context", "variant": "emphasis", "fromSide": "top", "toSide": "bottom", "route": "drop" },
+    { "from": "confirm_context", "to": "execute_query", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "from": "execute_query", "to": "check_rows", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "from": "check_rows", "to": "answer_report", "variant": "emphasis" },
+    { "from": "resolve_scope", "to": "clarify", "label": "material ambiguity", "variant": "dashed", "role": "branch", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1 },
+    { "from": "check_rows", "to": "recover", "label": "invalid", "variant": "security", "role": "error", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1 }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Definition first",
+      "items": [
+        "Search shared semantic models before warehouse discovery",
+        "Never invent a metric, population, relationship, or business rule"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Execution controls",
+      "items": [
+        "Show and confirm non-secret Snowflake context before the first connection",
+        "Use browser SSO, the configured read-only role, validated SQL, and bounded results"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Reproducible answer",
+      "items": [
+        "Validate rows before interpretation or report generation",
+        "Return definition, filters, period, model, query ID, role, SQL, and caveats"
+      ]
+    }
+  ]
+}

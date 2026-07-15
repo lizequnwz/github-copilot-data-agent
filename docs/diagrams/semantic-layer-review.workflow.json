@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Semantic Layer Creation and Review",
+    "subtitle": "BI export to audited, validated, analysis-ready Ossie model",
+    "output": "docs/diagrams/semantic-layer-review.html",
+    "animation": "none"
+  },
+  "lanes": [
+    { "id": "business", "label": "Business user" },
+    { "id": "analyst", "label": "Data analyst" },
+    { "id": "agent", "label": "Data agent + deterministic tools" },
+    { "id": "artifacts", "label": "Review and model artifacts" },
+    { "id": "exceptions", "label": "Unresolved review loop", "variant": "exception" }
+  ],
+  "phases": [
+    { "id": "intake", "label": "Source + conversion", "fromCol": 0, "toCol": 1 },
+    { "id": "review", "label": "Human review", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "publish", "label": "Validation + promotion", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+  ],
+  "groups": [
+    { "id": "business_decisions", "label": "Meaning and approval", "lane": "business", "fromCol": 2, "toCol": 4, "variant": "emphasis" },
+    { "id": "audited_engine", "label": "Audited execution", "lane": "agent", "fromCol": 1, "toCol": 3, "variant": "dashed" }
+  ],
+  "mainPath": [
+    "export",
+    "convert",
+    "business_review",
+    "technical_review",
+    "apply_validate",
+    "confirm_destination",
+    "promoted_model"
+  ],
+  "nodes": [
+    {
+      "id": "export",
+      "lane": "analyst",
+      "col": 0,
+      "type": "external",
+      "label": "Export source",
+      "sublabel": "Power BI / Tableau / YAML"
+    },
+    {
+      "id": "convert",
+      "lane": "agent",
+      "col": 1,
+      "type": "backend",
+      "label": "Convert",
+      "sublabel": "source → raw OSI",
+      "tag": "official validator"
+    },
+    {
+      "id": "business_review",
+      "lane": "business",
+      "col": 2,
+      "type": "frontend",
+      "label": "Review meaning",
+      "sublabel": "scope / exclusions / examples",
+      "tag": "browser workspace"
+    },
+    {
+      "id": "technical_review",
+      "lane": "analyst",
+      "col": 3,
+      "type": "frontend",
+      "label": "Check mappings",
+      "sublabel": "keys / joins / expressions"
+    },
+    {
+      "id": "apply_validate",
+      "lane": "agent",
+      "col": 4,
+      "type": "security",
+      "label": "Apply",
+      "sublabel": "compile audited patch",
+      "tag": "raw hash enforced"
+    },
+    {
+      "id": "confirm_destination",
+      "lane": "business",
+      "col": 5,
+      "type": "security",
+      "label": "Confirm target",
+      "sublabel": "promotion is explicit"
+    },
+    {
+      "id": "promoted_model",
+      "lane": "artifacts",
+      "col": 5,
+      "type": "database",
+      "label": "Ready model",
+      "sublabel": "semantic/models/*.yaml",
+      "tag": "analysis ready"
+    },
+    {
+      "id": "raw_artifacts",
+      "lane": "artifacts",
+      "col": 1,
+      "type": "database",
+      "label": "Raw + manifest",
+      "sublabel": "repeatable evidence"
+    },
+    {
+      "id": "audit_artifacts",
+      "lane": "artifacts",
+      "col": 4,
+      "type": "database",
+      "label": "Audit trail",
+      "sublabel": "before / after audit"
+    },
+    {
+      "id": "needs_evidence",
+      "lane": "exceptions",
+      "col": 5,
+      "type": "messagebus",
+      "label": "Needs evidence",
+      "sublabel": "assumption or failed check",
+      "tag": "no promotion"
+    }
+  ],
+  "edges": [
+    { "from": "export", "to": "convert", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "from": "convert", "to": "business_review", "variant": "emphasis", "fromSide": "top", "toSide": "bottom", "route": "drop" },
+    { "from": "business_review", "to": "technical_review", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "from": "technical_review", "to": "apply_validate", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "from": "apply_validate", "to": "confirm_destination", "label": "clean", "variant": "emphasis", "fromSide": "top", "toSide": "bottom", "route": "drop", "labelSegment": 1 },
+    { "from": "confirm_destination", "to": "promoted_model", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "from": "convert", "to": "raw_artifacts", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "from": "apply_validate", "to": "audit_artifacts", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "from": "apply_validate", "to": "needs_evidence", "label": "blocked", "variant": "security", "role": "error", "fromSide": "right", "toSide": "right", "route": "outside-right", "labelSegment": 1 }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Human responsibilities",
+      "items": [
+        "Business users own meaning, exclusions, synonyms, and expected questions",
+        "Analysts own physical mappings, keys, relationships, grain, and expressions"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Audit contract",
+      "items": [
+        "Every change carries rationale, evidence, confidence, and assumptions",
+        "Drafts never modify OSI; Apply compiles the complete decisions artifact"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Promotion rule",
+      "items": [
+        "Official and readiness validation must pass",
+        "Unresolved assumptions or verification failures preserve artifacts without promotion"
+      ]
+    }
+  ]
+}

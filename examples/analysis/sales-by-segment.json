@@ -1,0 +1,35 @@
+{
+  "request_id": "offline-sales-by-segment",
+  "question": "Compare completed-order gross sales by customer segment for May and June 2026.",
+  "model_path": "semantic/models/demo_sales.yaml",
+  "plan": {
+    "semantic_model": "demo_sales",
+    "metric_ids": ["gross_sales"],
+    "dimensions": ["customers.segment"],
+    "filters": [
+      {"field": "orders.status", "operator": "=", "value": "completed"}
+    ],
+    "time_range": {
+      "field": "orders.order_date",
+      "start": "2026-05-01",
+      "end_exclusive": "2026-07-01",
+      "label": "May through June 2026, complete calendar months"
+    },
+    "order_by": [{"field": "gross_sales", "direction": "desc"}],
+    "max_rows": 10
+  },
+  "example_result": {
+    "columns": ["segment", "gross_sales"],
+    "rows": [
+      ["Strategic", 142000],
+      ["Mid-market", 101500],
+      ["Small business", 76250]
+    ],
+    "truncated": false
+  },
+  "result_checks": {
+    "required_columns": ["segment", "gross_sales"],
+    "required_non_null": ["segment", "gross_sales"],
+    "numeric_ranges": {"gross_sales": {"min": 0}}
+  }
+}

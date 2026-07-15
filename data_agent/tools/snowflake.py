@@ -138,6 +138,8 @@ def execute_readonly(request: dict[str, Any]) -> dict[str, Any]:
         rows=rows,
         row_count=len(rows),
         truncated=truncated,
+        max_rows=max_rows,
+        query_limit=request.get("query_limit"),
         execution_seconds=round(time.monotonic() - started, 3),
         role=settings.role,
         validation=validation.as_dict(),

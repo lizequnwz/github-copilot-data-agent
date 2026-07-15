@@ -12,6 +12,9 @@ allowed-tools: ["read", "search", "edit", "execute"]
 2. Ask only about ambiguity that would materially change the result.
 3. Search `semantic/models/` with `osi-search`. Prefer a matching model and compile a structured
    plan with `osi-compile` when its fields and relationships cover the question.
+4. Show the resolved metric, population, dimensions, filters, period, expected result grain,
+   semantic model, and requested output. Proceed when unambiguous; ask only when a material choice
+   remains.
 
 ## Connect when needed
 
@@ -28,6 +31,9 @@ allowed-tools: ["read", "search", "edit", "execute"]
 1. Use metadata discovery only when the semantic model does not answer the source question.
 2. Plan the query before writing SQL. Use explicit columns and joins, confirm the result grain,
    parameterize values, and set a useful limit.
+   - Use `time_range` with `field`, inclusive `start`, exclusive `end_exclusive`, and `label`.
+   - Use `order_by` only for selected dimensions or metrics.
+   - Treat `grain` as qualified semantic identifiers and `result_grain` as returned column names.
 3. Run `validate-sql`, then `execute-readonly`.
 4. Run `validate-result` for emptiness, truncation, required columns, duplicate grain, required
    nulls, and any known numeric ranges.
@@ -39,3 +45,5 @@ Lead with the direct answer. Then include the metric definition, filters, period
 query ID, role, SQL, and meaningful caveats. Create a chart or HTML report only when requested.
 
 Never weaken read-only checks, bypass failed SSO, or invent a metric definition to continue.
+Never bypass an unsupported semantic-plan operation with manually authored analytical SQL. Explain
+the missing compiler or model capability and ask for a narrower question or model enhancement.

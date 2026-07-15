@@ -1,0 +1,41 @@
+model: demo_sales
+cases:
+  - id: completed_sales_by_region
+    question: Which regions drove gross sales during May and June 2026 using completed orders only?
+    plan:
+      semantic_model: demo_sales
+      metric_ids: [gross_sales]
+      dimensions: [orders.region]
+      filters:
+        - {field: orders.status, operator: "=", value: completed}
+      time_range:
+        field: orders.order_date
+        start: "2026-05-01"
+        end_exclusive: "2026-07-01"
+        label: May through June 2026, complete calendar months
+      order_by:
+        - {field: gross_sales, direction: desc}
+      max_rows: 10
+    expected:
+      grain: [orders.region]
+      result_grain: [region]
+      sql_contains:
+        - "orders.status = %s"
+        - "orders.order_date >= %s"
+        - "orders.order_date < %s"
+        - "ORDER BY gross_sales DESC"
+        - "LIMIT 11"
+  - id: completed_sales_by_segment
+    question: Compare completed-order gross sales by customer segment.
+    plan:
+      semantic_model: demo_sales
+      metric_ids: [gross_sales]
+      dimensions: [customers.segment]
+      filters:
+        - {field: orders.status, operator: "=", value: completed}
+      max_rows: 20
+    expected:
+      grain: [customers.segment]
+      result_grain: [segment]
+      sql_contains:
+        - "JOIN DEMO.ANALYTICS.CUSTOMERS AS customers ON orders.customer_id = customers.customer_id"

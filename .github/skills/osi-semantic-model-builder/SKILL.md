@@ -23,6 +23,7 @@ limits and [references/examples.md](references/examples.md) for commands. Read
 ## Stage 1: deterministic raw model
 
 1. Resolve the source path, model name, and intended physical tables/views.
+   Also capture the business domain, definition owner, and competency questions when available.
 2. Create source and field maps when the export does not resolve physical Snowflake objects.
 3. Run the builder from the repository root:
 
@@ -32,7 +33,9 @@ limits and [references/examples.md](references/examples.md) for commands. Read
    ```
 
 4. Inspect `<model>.conversion.json` and `<model>.raw.osi.yaml` under `semantic/generated/`.
-5. Do not promote the raw model. Resolve mechanical mapping errors and rerun when evidence exists.
+5. For a refresh, review the emitted object-level change list and its breaking, semantic, or
+   metadata impact before opening object editors.
+6. Do not promote the raw model. Resolve mechanical mapping errors and rerun when evidence exists.
 
 The converter uses the schema and validation functions from the pinned `ossie-main` submodule.
 Portable translated expressions use `ANSI_SQL`; source-native expressions are preserved in their
@@ -49,13 +52,15 @@ official Ossie dialect or in provenance extensions.
 
 2. Lead with blocking issues. Ask business users for meaning, exclusions, synonyms, and expected
    questions; ask analysts for mappings, keys, relationships, grain, and expressions.
-3. Use the focused editors for descriptions, synonyms, examples, instructions, expressions,
-   keys, relationships, and sources. Give every change rationale, evidence, confidence, and
+3. Select Business or Analyst review mode. Use the guided controls for descriptions, synonyms,
+   examples, instructions, expressions, translation decisions, keys, relationships, and sources.
+   Raw JSON operations are advanced-only. Give every change rationale, evidence, confidence, and
    assumptions. Never invent evidence or alter converter provenance.
 4. Select **Apply and validate** and confirm the proposed promotion destination. The backend
    compiles the complete decisions artifact into the audited patch and applies it deterministically.
 5. The applier writes `<model>.osi.yaml`, reruns official and readiness validation, records the
-   complete before/after audit, and promotes only a clean result to `semantic/models/`.
+   complete before/after audit, runs `semantic/tests/<model>.yaml` when present, and promotes only a
+   clean result to `semantic/models/`.
 6. If assumptions remain, leave the reviewed model under `semantic/generated/` and report the
    exact evidence or user decision needed.
 

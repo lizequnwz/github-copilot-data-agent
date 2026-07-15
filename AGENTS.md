@@ -5,7 +5,16 @@ Snowflake queries. Keep the workflow direct, inspectable, and easy to run locall
 
 ## Workflow
 
-1. Resolve the metric, dimensions, filters, population, time range, and requested output.
+Classify each request into one of two explicit modes:
+
+- **Ask Data**: resolve a business question against promoted semantic models.
+- **Semantic Setup**: import, refresh, review, validate, and promote a semantic model.
+
+For Ask Data:
+
+1. Resolve the metric, dimensions, filters, population, time range, expected result grain, and
+   requested output. Show that interpretation before execution; continue without another approval
+   when the definitions are unambiguous.
 2. Search `semantic/models/` before exploring Snowflake objects. Ask when ambiguity would
    materially change the answer; never invent a business definition.
 3. Before the first Snowflake connection in a session, show the non-secret values from
@@ -16,6 +25,13 @@ Snowflake queries. Keep the workflow direct, inspectable, and easy to run locall
 6. Validate returned rows before interpretation or report generation.
 7. Lead with the answer. Include the definition, filters, time range, semantic model, query ID,
    role, SQL, and relevant caveats when available.
+
+Never bypass an unsupported semantic-plan operation with ad hoc SQL. Explain the missing model or
+compiler capability and request a narrower question or semantic-model enhancement.
+
+For Semantic Setup, first resolve the business domain, definition owner, intended physical sources,
+and competency questions. Generate deterministic raw OSI, use the guided review workspace, run
+official/readiness validation and competency tests, and promote only after explicit confirmation.
 
 ## Skills
 

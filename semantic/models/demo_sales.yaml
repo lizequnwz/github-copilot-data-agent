@@ -1,16 +1,33 @@
 version: 0.2.0.dev0
 semantic_model:
   - name: demo_sales
-    description: Synthetic sales model used by the offline walkthrough.
+    description: Synthetic order and customer model used by the offline analyst workflow.
     ai_context:
-      instructions: Use only for the local example; the values are synthetic.
-      synonyms: [sales demo]
+      instructions: Use only for local examples. Treat completed orders as the default booked-sales population when the user requests completed sales.
+      synonyms: [sales demo, order analytics]
+      examples:
+        - Which regions drove gross sales during the last two complete calendar months?
+        - Compare completed-order gross sales by customer segment.
     datasets:
       - name: orders
         source: DEMO.ANALYTICS.ORDERS
         primary_key: [order_id]
         description: One synthetic row per order.
         fields:
+          - name: order_id
+            expression:
+              dialects:
+                - dialect: SNOWFLAKE
+                  expression: orders.order_id
+            dimension: {}
+            description: Stable order identifier.
+          - name: customer_id
+            expression:
+              dialects:
+                - dialect: SNOWFLAKE
+                  expression: orders.customer_id
+            dimension: {}
+            description: Customer identifier used to relate orders to customers.
           - name: order_date
             expression:
               dialects:
@@ -18,18 +35,69 @@ semantic_model:
                   expression: orders.order_date
             dimension: {is_time: true}
             description: Order creation date.
+          - name: status
+            expression:
+              dialects:
+                - dialect: SNOWFLAKE
+                  expression: orders.status
+            dimension: {}
+            description: Current order lifecycle status.
+            ai_context: {synonyms: [order state]}
           - name: region
             expression:
               dialects:
                 - dialect: SNOWFLAKE
                   expression: orders.region
             dimension: {}
+            description: Sales territory assigned to the order.
             ai_context: {synonyms: [geography, territory]}
+          - name: gross_sales_amount
+            expression:
+              dialects:
+                - dialect: SNOWFLAKE
+                  expression: orders.gross_sales_amount
+            dimension: {}
+            description: Gross order amount before returns.
+      - name: customers
+        source: DEMO.ANALYTICS.CUSTOMERS
+        primary_key: [customer_id]
+        description: One synthetic row per customer.
+        fields:
+          - name: customer_id
+            expression:
+              dialects:
+                - dialect: SNOWFLAKE
+                  expression: customers.customer_id
+            dimension: {}
+            description: Stable customer identifier.
+          - name: segment
+            expression:
+              dialects:
+                - dialect: SNOWFLAKE
+                  expression: customers.segment
+            dimension: {}
+            description: Commercial customer segment.
+            ai_context: {synonyms: [customer group]}
+    relationships:
+      - name: orders_to_customers
+        from: orders
+        to: customers
+        from_columns: [customer_id]
+        to_columns: [customer_id]
+        ai_context:
+          instructions: Each order belongs to one customer.
     metrics:
       - name: gross_sales
         expression:
           dialects:
             - dialect: SNOWFLAKE
               expression: SUM(orders.gross_sales_amount)
-        description: Sum of synthetic gross sales amount before returns.
+        description: Sum of gross order amount before returns.
         ai_context: {synonyms: [revenue, sales]}
+      - name: order_count
+        expression:
+          dialects:
+            - dialect: SNOWFLAKE
+              expression: COUNT(orders.order_id)
+        description: Number of orders in the selected population.
+        ai_context: {synonyms: [orders, number of orders]}

@@ -190,6 +190,7 @@ def build_review_state(
         },
         "review_result": review if isinstance(review, dict) else {},
         "promotion": promotion if isinstance(promotion, dict) else {},
+        "refresh": manifest.get("refresh", {}),
         "promotion_enabled": promotion_enabled,
         "verify_snowflake": verify_snowflake,
     }
@@ -307,7 +308,8 @@ def render_review_html(state: dict[str, Any], *, token: str = "") -> str:
     serialized = json.dumps(state, ensure_ascii=False).replace("</", "<\\/")
     token_json = json.dumps(token)
     title = html.escape(str(state["model_name"]))
-    return f'''<!doctype html>
+    refresh_html = _refresh_summary_html(state.get("refresh"))
+    return rf"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>Review {title}</title>
 <style>
 :root{{--bg:#f5f7fa;--surface:#fff;--surface-2:#eef2f6;--text:#172033;--muted:#526173;--border:#808da1;--primary:#174ea6;--primary-text:#fff;--success:#14733b;--warning:#8a4b00;--error:#b42318;--ring:#2563eb;--shadow:0 8px 24px rgba(22,34,54,.08)}}
@@ -318,39 +320,82 @@ def render_review_html(state: dict[str, Any], *, token: str = "") -> str:
 @media(prefers-color-scheme:dark){{:root{{--bg:#0b1220;--surface:#121d2f;--surface-2:#1b2940;--text:#edf2f8;--muted:#b3c0d2;--border:#6d7f9b;--primary:#8bb8ff;--primary-text:#07111f;--success:#72d69a;--warning:#ffc266;--error:#ff938a;--ring:#9dc4ff;--shadow:none}}}}
 @media(prefers-reduced-motion:reduce){{*{{scroll-behavior:auto!important;transition:none!important;animation:none!important}}}}
 </style></head><body><a class="skip" href="#workspace">Skip to review workspace</a>
-<header><div class="identity"><div class="eyebrow">Semantic review</div><h1>{title}</h1></div><div class="header-meta"><span id="progressText"></span><span id="dirtyState">Draft saved</span></div><div class="actions"><button id="finishButton" type="button">Finish</button><button id="applyButton" class="primary" type="button">Apply and validate</button></div></header>
-<div class="shell"><nav aria-label="Review sections" id="sideNav"></nav><main id="workspace" tabindex="-1"><label class="mobile-nav">Review section<select id="sectionSelect"></select></label><div id="content"></div></main></div>
+<header><div class="identity"><div class="eyebrow">Semantic review</div><h1>{title}</h1></div><div class="header-meta"><span id="progressText"></span><span id="dirtyState">Draft saved</span></div><div class="actions"><label class="role-filter">Review as<select id="roleFilter"><option value="all">All reviewers</option><option value="business">Business</option><option value="analyst">Analyst</option></select></label><button id="finishButton" type="button">Finish</button><button id="applyButton" class="primary" type="button">Apply and validate</button></div></header>
+<div class="shell"><nav aria-label="Review sections" id="sideNav"></nav><main id="workspace" tabindex="-1"><label class="mobile-nav">Review section<select id="sectionSelect"></select></label>{refresh_html}<div id="content"></div></main></div>
 <dialog id="editor"><form method="dialog" id="editorForm"><div class="dialog-head"><div><div class="eyebrow" id="editorType"></div><h2 id="editorTitle">Edit semantic object</h2></div><button value="cancel" aria-label="Close editor">Close</button></div><div class="dialog-body"><div id="errorSummary" class="error-summary" tabindex="-1"></div><div id="propertyFields"></div><fieldset><legend>Review evidence</legend><label>Rationale<span class="helper">Why this semantic change is correct and useful.</span><textarea id="rationale" required></textarea><span class="field-error" id="rationaleError"></span></label><label>Evidence type<select id="evidenceType"><option value="user">Business owner or user</option><option value="source_metadata">Source metadata</option><option value="snowflake_metadata">Snowflake metadata</option><option value="official_spec">Official specification</option><option value="inference">Documented inference</option></select></label><label>Evidence reference<span class="helper">Point to the export, conversation, query, or specification.</span><input id="evidenceReference" required><span class="field-error" id="evidenceError"></span></label><label>Confidence<select id="confidence"><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label><label>Assumptions<span class="helper">One per line. Leave blank only when none remain.</span><textarea id="assumptions"></textarea></label></fieldset></div><div class="dialog-foot"><button id="removeButton" class="danger" type="button">Remove object</button><div><button value="cancel">Cancel</button> <button id="saveButton" class="primary" type="button">Save to draft</button></div></div></form></dialog>
 <div class="live" role="status" aria-live="polite" id="live"></div><script>const INITIAL={serialized};const TOKEN={token_json};
-let state=INITIAL,active=sessionStorage.getItem('semantic-review-section')||(INITIAL.progress.remaining?'issues':'overview'),dirty=false,editorObject=null,saveTimer=null;const sections=['overview','issues','datasets','fields','metrics','relationships','ai_context'];const labels={{overview:'Overview',issues:'Blocking issues',datasets:'Datasets',fields:'Fields',metrics:'Metrics',relationships:'Relationships',ai_context:'AI context'}};
+let state=INITIAL,active=sessionStorage.getItem('semantic-review-section')||(INITIAL.progress.remaining?'issues':'overview'),reviewRole=sessionStorage.getItem('semantic-review-role')||'all',dirty=false,editorObject=null,translationChoice=null,saveTimer=null;const sections=['overview','issues','datasets','fields','metrics','relationships','ai_context'],roleSections={{all:sections,business:['overview','issues','metrics','ai_context'],analyst:['overview','issues','datasets','fields','metrics','relationships']}};const labels={{overview:'Overview',issues:'Blocking issues',datasets:'Datasets',fields:'Fields',metrics:'Metrics',relationships:'Relationships',ai_context:'AI context'}};
 const icon=(kind)=>kind==='error'?'<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M10 1 19 18H1L10 1Zm-1 6v5h2V7H9Zm0 7v2h2v-2H9Z"/></svg>':kind==='success'?'<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="m8.2 14.6-4.4-4.4 1.4-1.4 3 3 6.6-6.6 1.4 1.4-8 8Z"/></svg>':'<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 9h2v6H9zm0-4h2v2H9z" fill="currentColor"/></svg>';
 function esc(v){{return String(v??'').replace(/[&<>"']/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}}[c]))}}function announce(v){{document.getElementById('live').textContent=v}}function setDirty(v){{dirty=v;document.getElementById('dirtyState').textContent=v?'Unsaved changes':'Draft saved';document.getElementById('dirtyState').className=v?'unsaved':''}}
 function operationFor(path){{return state.decisions.operations.find(o=>o.path===path)}}function shownValue(prop){{const op=operationFor(prop.path);return op&&op.op!=='remove'?op.value:prop.value}}function valueText(prop){{const value=shownValue(prop);return prop.kind==='text'?String(value??''):JSON.stringify(value??null,null,2)}}
-function renderNav(){{const nav=document.getElementById('sideNav'),sel=document.getElementById('sectionSelect');nav.innerHTML=sections.map(s=>`<button class="side-button" data-section="${{s}}" aria-current="${{active===s?'page':'false'}}">${{labels[s]}}</button>`).join('');sel.innerHTML=sections.map(s=>`<option value="${{s}}" ${{active===s?'selected':''}}>${{labels[s]}}</option>`).join('');nav.querySelectorAll('button').forEach(b=>b.onclick=()=>showSection(b.dataset.section));sel.onchange=()=>showSection(sel.value)}}
+function renderNav(){{const visible=roleSections[reviewRole]||sections;if(!visible.includes(active))active=visible[0];const nav=document.getElementById('sideNav'),sel=document.getElementById('sectionSelect');nav.innerHTML=visible.map(s=>`<button class="side-button" data-section="${{s}}" aria-current="${{active===s?'page':'false'}}">${{labels[s]}}</button>`).join('');sel.innerHTML=visible.map(s=>`<option value="${{s}}" ${{active===s?'selected':''}}>${{labels[s]}}</option>`).join('');nav.querySelectorAll('button').forEach(b=>b.onclick=()=>showSection(b.dataset.section));sel.onchange=()=>showSection(sel.value);const role=document.getElementById('roleFilter');role.value=reviewRole;role.onchange=()=>{{reviewRole=role.value;sessionStorage.setItem('semantic-review-role',reviewRole);render()}}}}
 function showSection(section){{active=sections.includes(section)?section:'overview';sessionStorage.setItem('semantic-review-section',active);render()}}
 function progress(){{const p=state.progress;document.getElementById('progressText').textContent=`${{p.resolved}} of ${{p.total}} issues resolved`;document.getElementById('applyButton').disabled=false}}
 function issueHtml(i){{const blocking=i.severity==='blocking',element=String(i.element||''),target=state.objects.find(o=>element===state.model_name&&o.id==='model'||element.endsWith('.'+o.name));return `<article class="issue ${{blocking?'blocking':''}}"><span class="badge ${{blocking?'error':'warning'}}">${{icon(blocking?'error':'info')}}${{esc(i.severity||'review')}}</span><h3>${{esc(i.code||'Review issue')}}</h3><p>${{esc(i.message||'')}}</p><p class="path">${{esc(i.element||'model')}}</p>${{target?`<button type="button" data-object="${{esc(target.id)}}">Review ${{esc(labels[target.section].toLowerCase())}}</button>`:''}}</article>`}}
 function issueGroups(){{const blocking=state.issues.filter(i=>i.severity==='blocking'),review=state.issues.filter(i=>i.severity!=='blocking'),groups=Object.values(review.reduce((all,item)=>{{(all[item.code]??=[]).push(item);return all}},{{}})),notice=`<p class="${{blocking.length?'error':'success'}}">${{blocking.length?blocking.length+' blocking issues require correction.':'No blocking issues. '+review.length+' review decisions remain.'}}</p>`,reviewHtml=groups.map(items=>items.length===1?issueHtml(items[0]):`<details><summary>${{items.length}} ${{esc(items[0].code)}} decisions</summary><div class="issue-list">${{items.map(issueHtml).join('')}}</div></details>`).join('');return notice+blocking.map(issueHtml).join('')+reviewHtml}}
-function objectRows(kind){{const objects=state.objects.filter(o=>o.section===kind);if(!objects.length)return '<div class="empty">No objects in this section.</div>';return `<div class="toolbar"><label>Search ${{esc(labels[kind].toLowerCase())}}<input id="objectSearch" type="search" placeholder="Search by name or path"></label><label>Filter<select id="objectFilter"><option value="all">All objects</option><option value="changed">Changed only</option></select></label></div><div class="object-list" id="objectList">${{objects.map(o=>`<div class="object-row" data-search="${{esc((o.name+' '+o.context+' '+o.path).toLowerCase())}}" data-changed="${{o.properties.some(p=>operationFor(p.path))}}"><div><h3>${{esc(o.name)}}</h3><p>${{esc(o.context)}}</p></div><button type="button" data-object="${{esc(o.id)}}">Review</button></div>`).join('')}}</div>`}}
+function objectRows(kind){{const objects=state.objects.filter(o=>o.section===kind);if(!objects.length)return '<div class="empty">No objects in this section.</div>';const hasTranslations=objects.some(o=>o.translation);return `<div class="toolbar"><label>Search ${{esc(labels[kind].toLowerCase())}}<input id="objectSearch" type="search" placeholder="Search by name or path"></label><label>Filter<select id="objectFilter"><option value="all">All objects</option><option value="changed">Changed only</option></select></label></div>${{hasTranslations?'<p><button id="bulkTranslation" type="button">Review selected translations</button></p>':''}}<div class="object-list" id="objectList">${{objects.map(o=>`<div class="object-row" data-search="${{esc((o.name+' '+o.context+' '+o.path).toLowerCase())}}" data-changed="${{o.properties.some(p=>operationFor(p.path))}}"><div>${{o.translation?`<label><input type="checkbox" data-bulk-object="${{esc(o.id)}}"> Select for shared translation decision</label>`:''}}<h3>${{esc(o.name)}}</h3><p>${{esc(o.context)}}</p></div><button type="button" data-object="${{esc(o.id)}}">Review</button></div>`).join('')}}</div>`}}
 function overview(){{const p=state.progress,src=state.source||{{}},promotion=state.promotion||{{}},applied=!!state.review_result?.validation,decisionCount=state.decisions.operations.length,pending=state.decisions.operations.map((o,i)=>`<div class="object-row"><div><strong>${{esc(o.op)}} ${{esc(o.path)}}</strong><p>${{esc(o.rationale)}}</p></div><button type="button" data-undo="${{i}}">Undo</button></div>`).join('');return `<section class="panel"><div class="eyebrow">Readiness</div><h2>Resolve meaning before promotion</h2><div class="status-line"><span class="badge ${{p.remaining?'warning':'success'}}">${{icon(p.remaining?'info':'success')}}${{p.remaining}} issues remaining</span><span>${{decisionCount}} ${{applied?'reviewed decisions':'pending edits'}}</span><span class="muted">Status: ${{esc(state.status)}}</span></div><p>Business users confirm meaning and exclusions. Analysts confirm mappings, keys, relationships, and expressions. The agent compiles every approved decision into an audited patch, validates Ossie, and promotes only a clean result.</p></section>${{pending?`<section class="panel"><h2>${{applied?'Reviewed decisions':'Pending changes'}}</h2><div class="object-list">${{pending}}</div></section>`:''}}<section class="panel"><h2>Source and artifacts</h2><dl class="result-grid"><div><dt>Source</dt><dd>${{esc(src.path||'Unknown')}}</dd></div><div><dt>Source type</dt><dd>${{esc(src.type||'Unknown')}}</dd></div><div><dt>Raw model</dt><dd>${{esc(state.artifacts.raw)}}</dd></div><div><dt>Promotion</dt><dd>${{promotion.promoted?'Promoted to '+esc(promotion.model_path):promotion.eligible&&state.promotion_enabled?'Eligible after confirmation':state.promotion_enabled?'Not yet eligible':'Promotion disabled for this run'}}</dd></div></dl></section><section class="panel"><h2>Advanced operation</h2><details><summary>Add or remove an object with JSON Pointer</summary><div class="advanced-row"><label>Operation<select id="advancedOp"><option>add</option><option>replace</option><option>remove</option></select></label><label>Path<input id="advancedPath" placeholder="/semantic_model/0/metrics/-"></label><label>JSON value<textarea id="advancedValue" placeholder='{{"name":"metric_name"}}'></textarea></label><button id="advancedAdd" type="button">Open evidence editor</button></div></details></section>`}}
 function results(){{const r=state.review_result||{{}},p=state.promotion||{{}};if(!r.validation)return '';const audit=(r.operations||[]).map(o=>`<details><summary>${{esc(o.op)}} ${{esc(o.path)}}</summary><dl class="result-grid"><div><dt>Before</dt><dd class="path">${{esc(JSON.stringify(o.before,null,2))}}</dd></div><div><dt>After</dt><dd class="path">${{esc(JSON.stringify(o.after,null,2))}}</dd></div></dl></details>`).join('');return `<section class="panel"><h2>Latest validation result</h2><dl class="result-grid"><div><dt>Official Ossie</dt><dd>${{r.validation?.official_valid?'Valid':'Needs correction'}}</dd></div><div><dt>Analysis ready</dt><dd>${{r.validation?.analysis_ready?'Yes':'No'}}</dd></div><div><dt>Final model</dt><dd>${{esc(r.final_model_path||'Not written')}}</dd></div><div><dt>Promotion</dt><dd>${{p.promoted?'Promoted to '+esc(p.model_path):'Not promoted'}}</dd></div></dl>${{audit?`<h3>Before and after</h3>${{audit}}`:''}}${{(r.unresolved_assumptions||[]).length?`<details><summary>${{r.unresolved_assumptions.length}} unresolved assumptions</summary><ul>${{r.unresolved_assumptions.map(a=>`<li>${{esc(a)}}</li>`).join('')}}</ul></details>`:''}}</section>`}}
-function render(){{const scroll=Number(sessionStorage.getItem('semantic-review-scroll-'+active)||0);renderNav();progress();let body='';if(active==='overview')body=overview()+results();else if(active==='issues')body=`<section class="panel"><h2>Blocking issues and decisions</h2><p class="muted">Address required decisions first. Repeated and informational details stay compact.</p><div class="issue-list">${{state.issues.length?issueGroups():'<p class="success">No remaining review issues.</p>'}}</div></section>`;else body=`<section class="panel"><h2>${{labels[active]}}</h2><p class="muted">Search the object list, then review one focused editor at a time.</p>${{objectRows(active)}}</section>`;document.getElementById('content').innerHTML=body;document.querySelectorAll('[data-object]').forEach(b=>b.onclick=()=>openObject(b.dataset.object));document.querySelectorAll('[data-undo]').forEach(b=>b.onclick=()=>{{state.decisions.operations.splice(Number(b.dataset.undo),1);setDirty(true);scheduleDraft();render();announce('Pending change undone.')}});const search=document.getElementById('objectSearch'),filter=document.getElementById('objectFilter');if(search){{const saved=sessionStorage.getItem('semantic-review-search-'+active)||'';search.value=saved;search.oninput=()=>{{sessionStorage.setItem('semantic-review-search-'+active,search.value);filterRows()}};filter.onchange=filterRows;filterRows()}}const add=document.getElementById('advancedAdd');if(add)add.onclick=openAdvanced;requestAnimationFrame(()=>scrollTo(0,scroll))}}
+function render(){{const scroll=Number(sessionStorage.getItem('semantic-review-scroll-'+active)||0);renderNav();progress();let body='';if(active==='overview')body=overview()+results();else if(active==='issues')body=`<section class="panel"><h2>Blocking issues and decisions</h2><p class="muted">Address required decisions first. Repeated and informational details stay compact.</p><div class="issue-list">${{state.issues.length?issueGroups():'<p class="success">No remaining review issues.</p>'}}</div></section>`;else body=`<section class="panel"><h2>${{labels[active]}}</h2><p class="muted">Search the object list, then review one focused editor at a time.</p>${{objectRows(active)}}</section>`;document.getElementById('content').innerHTML=body;document.querySelectorAll('[data-object]').forEach(b=>b.onclick=()=>openObject(b.dataset.object));document.querySelectorAll('[data-undo]').forEach(b=>b.onclick=()=>{{state.decisions.operations.splice(Number(b.dataset.undo),1);setDirty(true);scheduleDraft();render();announce('Pending change undone.')}});const search=document.getElementById('objectSearch'),filter=document.getElementById('objectFilter');if(search){{const saved=sessionStorage.getItem('semantic-review-search-'+active)||'';search.value=saved;search.oninput=()=>{{sessionStorage.setItem('semantic-review-search-'+active,search.value);filterRows()}};filter.onchange=filterRows;filterRows()}}const add=document.getElementById('advancedAdd');if(add)add.onclick=openAdvanced;const bulk=document.getElementById('bulkTranslation');if(bulk)bulk.onclick=openBulk;requestAnimationFrame(()=>scrollTo(0,scroll))}}
 function filterRows(){{const q=document.getElementById('objectSearch').value.toLowerCase(),f=document.getElementById('objectFilter').value;document.querySelectorAll('.object-row').forEach(row=>row.hidden=!row.dataset.search.includes(q)||(f==='changed'&&row.dataset.changed!=='true'))}}
-function propertyInput(prop){{const value=valueText(prop),tag=prop.kind==='text'?`<input data-path="${{esc(prop.path)}}" value="${{esc(value)}}">`:`<textarea data-path="${{esc(prop.path)}}">${{esc(value)}}</textarea>`;return `<label>${{esc(prop.label)}}<span class="helper">${{esc(prop.help)}}</span>${{tag}}<span class="field-error" data-error="${{esc(prop.path)}}"></span></label>`}}
-function openObject(id){{editorObject=state.objects.find(o=>o.id===id);document.getElementById('editorType').textContent=labels[editorObject.section];document.getElementById('editorTitle').textContent=editorObject.name;document.getElementById('propertyFields').innerHTML=`<fieldset><legend>Semantic values</legend>${{editorObject.properties.map(propertyInput).join('')}}</fieldset>`;document.querySelectorAll('#propertyFields input,#propertyFields textarea').forEach(input=>input.addEventListener('blur',()=>validateProperty(input)));document.getElementById('removeButton').hidden=editorObject.protected===true;clearAudit();document.getElementById('editor').showModal();document.querySelector('#propertyFields input,#propertyFields textarea')?.focus()}}
+function keySelect(prop,selected){{return `<select data-key-select multiple size="${{Math.min(Math.max((prop.options||[]).length,2),8)}}">${{(prop.options||[]).map(v=>`<option ${{selected.includes(v)?'selected':''}}>${{esc(v)}}</option>`).join('')}}</select>`}}
+function propertyInput(prop){{const value=shownValue(prop);let control='';if(prop.kind==='text')control=`<input data-value value="${{esc(String(value??''))}}">`;else if(prop.kind==='select')control=`<select data-value>${{(prop.options||[]).map(v=>`<option ${{v===value?'selected':''}}>${{esc(v)}}</option>`).join('')}}</select>`;else if(prop.kind==='multi_select')control=`<select data-value multiple size="${{Math.min(Math.max((prop.options||[]).length,2),8)}}">${{(prop.options||[]).map(v=>`<option ${{(value||[]).includes(v)?'selected':''}}>${{esc(v)}}</option>`).join('')}}</select>`;else if(prop.kind==='string_list')control=`<textarea data-value placeholder="One field per line">${{esc((value||[]).join('\n'))}}</textarea>`;else if(prop.kind==='key_lists')control=`<textarea data-value placeholder="One key per line; separate composite fields with commas">${{esc((value||[]).map(v=>Array.isArray(v)?v.join(', '):v).join('\n'))}}</textarea>`;else if(prop.kind==='key_selects'){{const keys=value?.length?value:[[]];control=`<div data-key-list>${{keys.map(key=>keySelect(prop,key)).join('')}}</div><button type="button" data-add-key="${{esc(prop.path)}}">Add another unique key</button>`}}else if(prop.kind==='dimension')control=`<label><input data-value type="checkbox" ${{value?.is_time?'checked':''}}> Time dimension</label>`;else if(prop.kind==='ai_context'){{const v=value||{{}};control=`<label>Instructions<textarea data-part="instructions">${{esc(v.instructions||'')}}</textarea></label><label>Synonyms<span class="helper">One per line</span><textarea data-part="synonyms">${{esc((v.synonyms||[]).join('\n'))}}</textarea></label><label>Example questions<span class="helper">One per line</span><textarea data-part="examples">${{esc((v.examples||[]).join('\n'))}}</textarea></label>`}}else if(prop.kind==='expression'){{const dialects=value?.dialects?.length?value.dialects:[{{dialect:'ANSI_SQL',expression:''}}];control=dialects.map((d,i)=>`<div class="result-grid"><label>Dialect<input data-dialect="${{i}}" value="${{esc(d.dialect||'')}}"></label><label>Expression<textarea data-expression="${{i}}">${{esc(d.expression||'')}}</textarea></label></div>`).join('')}}return `<div class="property-field" data-property data-path="${{esc(prop.path)}}"><label>${{esc(prop.label)}}<span class="helper">${{esc(prop.help)}}</span></label>${{control}}<span class="field-error" data-error="${{esc(prop.path)}}"></span></div>`}}
+function translationPanel(t){{if(!t)return '';return `<fieldset><legend>Translation decision</legend><p><strong>Status:</strong> ${{esc(t.status)}}</p><p><strong>Source expression:</strong> <span class="path">${{esc(typeof t.source_expression==='string'?t.source_expression:JSON.stringify(t.source_expression))}}</span></p><div class="status-line"><button type="button" data-translation="accepted">Accept translation</button><button type="button" data-translation="unsupported">Retain as unsupported</button><button type="button" data-translation="requested">Request evidence</button></div><p class="helper" id="translationState">Choose how this source translation should be treated. Accepting or editing it records an audited resolution.</p></fieldset>`}}
+function openObject(id){{editorObject=state.objects.find(o=>o.id===id);translationChoice=null;document.getElementById('editorType').textContent=labels[editorObject.section];document.getElementById('editorTitle').textContent=editorObject.name;document.getElementById('propertyFields').innerHTML=`<fieldset><legend>Semantic values</legend>${{editorObject.properties.map(propertyInput).join('')}}</fieldset>${{translationPanel(editorObject.translation)}}`;document.querySelectorAll('#propertyFields [data-property]').forEach(input=>input.addEventListener('focusout',()=>validateProperty(input)));document.querySelectorAll('[data-add-key]').forEach(button=>button.onclick=()=>{{const prop=editorObject.properties.find(item=>item.path===button.dataset.addKey);button.previousElementSibling.insertAdjacentHTML('beforeend',keySelect(prop,[]))}});document.querySelectorAll('[data-translation]').forEach(button=>button.onclick=()=>{{translationChoice=button.dataset.translation;document.getElementById('translationState').textContent='Selected: '+button.textContent;announce(button.textContent+' selected.')}});document.getElementById('removeButton').hidden=editorObject.protected===true;clearAudit();document.getElementById('editor').showModal();document.querySelector('#propertyFields input,#propertyFields textarea,#propertyFields select')?.focus()}}
 function openAdvanced(){{const op=document.getElementById('advancedOp').value,path=document.getElementById('advancedPath').value.trim();let value;try{{if(op!=='remove')value=JSON.parse(document.getElementById('advancedValue').value)}}catch(e){{announce('Advanced value must be valid JSON.');return}}editorObject={{id:'advanced',name:'Advanced operation',section:'overview',path,advancedOp:op,advancedValue:value,properties:[]}};document.getElementById('editorType').textContent='Advanced';document.getElementById('editorTitle').textContent='Review advanced operation';document.getElementById('propertyFields').innerHTML=`<p class="path">${{esc(op)}} ${{esc(path)}}</p>`;document.getElementById('removeButton').hidden=true;clearAudit();document.getElementById('editor').showModal();document.getElementById('rationale').focus()}}
+function openBulk(){{const selected=[...document.querySelectorAll('[data-bulk-object]:checked')].map(input=>state.objects.find(o=>o.id===input.dataset.bulkObject)).filter(Boolean);if(!selected.length){{announce('Select at least one translation.');return}}const statuses=new Set(selected.map(o=>o.translation.status));if(statuses.size!==1){{announce('Bulk review requires translations with the same status.');return}}editorObject={{id:'bulk',name:'Shared translation decision',section:active,bulkTranslation:selected,properties:[]}};translationChoice=null;document.getElementById('editorType').textContent='Bulk translation review';document.getElementById('editorTitle').textContent=`Review ${{selected.length}} selected translations`;document.getElementById('propertyFields').innerHTML=`<p>One decision and evidence record will be applied individually to each selected item.</p>${{translationPanel(selected[0].translation)}}`;document.querySelectorAll('[data-translation]').forEach(button=>button.onclick=()=>{{translationChoice=button.dataset.translation;document.getElementById('translationState').textContent='Selected: '+button.textContent}});document.getElementById('removeButton').hidden=true;clearAudit();document.getElementById('editor').showModal();document.getElementById('rationale').focus()}}
 function clearAudit(){{document.getElementById('rationale').value='';document.getElementById('evidenceReference').value='';document.getElementById('assumptions').value='';document.getElementById('confidence').value='high';document.getElementById('errorSummary').textContent='';document.querySelectorAll('.field-error').forEach(e=>e.textContent='')}}
-function validateProperty(input){{const prop=editorObject?.properties?.find(p=>p.path===input.dataset.path),error=input.nextElementSibling;if(!prop)return true;let message='';if(prop.label==='Name'&&!input.value.trim())message='Name is required.';if(prop.kind!=='text'){{try{{JSON.parse(input.value)}}catch(e){{message='Enter valid JSON.'}}}}error.textContent=message;return !message}}
-function audit(){{return{{rationale:document.getElementById('rationale').value.trim(),evidence:[{{type:document.getElementById('evidenceType').value,reference:document.getElementById('evidenceReference').value.trim()}}],confidence:document.getElementById('confidence').value,assumptions:document.getElementById('assumptions').value.split('\\n').map(v=>v.trim()).filter(Boolean)}}}}
+function readProperty(node,prop){{if(prop.kind==='text'||prop.kind==='select')return node.querySelector('[data-value]').value;if(prop.kind==='multi_select')return[...node.querySelector('[data-value]').selectedOptions].map(option=>option.value);if(prop.kind==='string_list')return node.querySelector('[data-value]').value.split('\n').map(v=>v.trim()).filter(Boolean);if(prop.kind==='key_lists')return node.querySelector('[data-value]').value.split('\n').map(v=>v.split(',').map(x=>x.trim()).filter(Boolean)).filter(v=>v.length);if(prop.kind==='key_selects')return[...node.querySelectorAll('[data-key-select]')].map(select=>[...select.selectedOptions].map(option=>option.value)).filter(key=>key.length);if(prop.kind==='dimension')return{{is_time:node.querySelector('[data-value]').checked}};if(prop.kind==='ai_context'){{const result={{}},instructions=node.querySelector('[data-part="instructions"]').value.trim(),synonyms=node.querySelector('[data-part="synonyms"]').value.split('\n').map(v=>v.trim()).filter(Boolean),examples=node.querySelector('[data-part="examples"]').value.split('\n').map(v=>v.trim()).filter(Boolean);if(instructions)result.instructions=instructions;if(synonyms.length)result.synonyms=synonyms;if(examples.length)result.examples=examples;return result}}if(prop.kind==='expression')return{{dialects:[...node.querySelectorAll('[data-dialect]')].map(input=>({{dialect:input.value.trim(),expression:node.querySelector(`[data-expression="${{input.dataset.dialect}}"]`).value.trim()}}))}};return null}}
+function emptyValue(value){{return value===null||value===undefined||value===''||(Array.isArray(value)&&value.length===0)||(typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length===0)}}
+function validateProperty(node){{const prop=editorObject?.properties?.find(p=>p.path===node.dataset.path),error=node.querySelector('.field-error');if(!prop)return true;const value=readProperty(node,prop);let message='';if(prop.label==='Name'&&!String(value).trim())message='Name is required.';if(prop.kind==='expression'&&value.dialects.some(d=>!d.dialect||!d.expression))message='Every expression needs a dialect and value.';error.textContent=message;return !message}}
+function audit(){{return{{rationale:document.getElementById('rationale').value.trim(),evidence:[{{type:document.getElementById('evidenceType').value,reference:document.getElementById('evidenceReference').value.trim()}}],confidence:document.getElementById('confidence').value,assumptions:document.getElementById('assumptions').value.split('\n').map(v=>v.trim()).filter(Boolean)}}}}
 function validateAudit(){{const a=audit(),errors=[];if(!a.rationale)errors.push(['rationale','Explain why this change is correct.']);if(!a.evidence[0].reference)errors.push(['evidence','Provide a verifiable evidence reference.']);document.getElementById('rationaleError').textContent=errors.find(e=>e[0]==='rationale')?.[1]||'';document.getElementById('evidenceError').textContent=errors.find(e=>e[0]==='evidence')?.[1]||'';const summary=document.getElementById('errorSummary');summary.innerHTML=errors.map(e=>`<div>${{esc(e[1])}}</div>`).join('');if(errors.length){{summary.focus();document.getElementById(errors[0][0]==='rationale'?'rationale':'evidenceReference').focus();return null}}return a}}
 function upsert(op){{const i=state.decisions.operations.findIndex(v=>v.path===op.path);if(i>=0)state.decisions.operations[i]=op;else state.decisions.operations.push(op)}}function removePending(path){{state.decisions.operations=state.decisions.operations.filter(o=>o.path!==path)}}
-function saveEditor(){{const inputs=[...document.querySelectorAll('#propertyFields [data-path]')],invalid=inputs.find(input=>!validateProperty(input));if(invalid){{document.getElementById('errorSummary').textContent='Correct the highlighted semantic value.';document.getElementById('errorSummary').focus();invalid.focus();return}}const a=validateAudit();if(!a)return;if(editorObject.advancedOp){{if(!editorObject.path?.startsWith('/')){{document.getElementById('errorSummary').textContent='Path must be a JSON Pointer beginning with /.';return}}upsert({{op:editorObject.advancedOp,path:editorObject.path,...(editorObject.advancedOp==='remove'?{{}}:{{value:editorObject.advancedValue}}),...a}})}}else{{for(const prop of editorObject.properties){{const input=inputs.find(el=>el.dataset.path===prop.path);let value=input.value;if(prop.kind!=='text')value=JSON.parse(value);if(JSON.stringify(value)===JSON.stringify(prop.value))removePending(prop.path);else upsert({{op:prop.exists?'replace':'add',path:prop.path,value,...a,...(prop.label==='Name'?{{intent:'rename'}}:{{}})}})}}}}setDirty(true);scheduleDraft();document.getElementById('editor').close();announce('Changes saved to the review draft.');render()}}
+function saveEditor(){{const inputs=[...document.querySelectorAll('#propertyFields [data-property]')],invalid=inputs.find(input=>!validateProperty(input));if(invalid){{document.getElementById('errorSummary').textContent='Correct the highlighted semantic value.';document.getElementById('errorSummary').focus();invalid.querySelector('input,textarea,select')?.focus();return}}const a=validateAudit();if(!a)return;if(editorObject.bulkTranslation){{if(!translationChoice){{document.getElementById('errorSummary').textContent='Choose a translation decision for the selected items.';return}}for(const item of editorObject.bulkTranslation)upsert({{op:'replace',path:item.translation.path,value:item.translation[translationChoice+'_value'],...a}})}}else if(editorObject.advancedOp){{if(!editorObject.path?.startsWith('/')){{document.getElementById('errorSummary').textContent='Path must be a JSON Pointer beginning with /.';return}}upsert({{op:editorObject.advancedOp,path:editorObject.path,...(editorObject.advancedOp==='remove'?{{}}:{{value:editorObject.advancedValue}}),...a}})}}else{{let expressionChanged=false;for(const prop of editorObject.properties){{const input=inputs.find(el=>el.dataset.path===prop.path),value=readProperty(input,prop);if((!prop.exists&&emptyValue(value))||JSON.stringify(value)===JSON.stringify(prop.value))removePending(prop.path);else{{upsert({{op:prop.exists?'replace':'add',path:prop.path,value,...a,...(prop.label==='Name'?{{intent:'rename'}}:{{}})}});if(prop.kind==='expression')expressionChanged=true}}}}if(editorObject.translation){{const choice=translationChoice||(expressionChanged?'accepted':null);if(choice)upsert({{op:'replace',path:editorObject.translation.path,value:editorObject.translation[choice+'_value'],...a}})}}}}setDirty(true);scheduleDraft();document.getElementById('editor').close();announce('Changes saved to the review draft.');render()}}
 function removeObject(){{if(!confirm(`Remove ${{editorObject.name}}? You can undo before Apply.`))return;const a=validateAudit();if(!a)return;upsert({{op:'remove',path:editorObject.path,...a}});setDirty(true);scheduleDraft();document.getElementById('editor').close();announce('Object marked for removal.');render()}}
 function scheduleDraft(){{clearTimeout(saveTimer);saveTimer=setTimeout(saveDraft,800)}}async function api(path,payload){{const response=await fetch(path,{{method:'POST',headers:{{'Content-Type':'application/json','X-Review-Token':TOKEN}},body:JSON.stringify(payload)}});const body=await response.json();if(!response.ok)throw new Error(body.error||'Request failed');return body}}
 async function saveDraft(){{if(!TOKEN){{setDirty(true);return}}try{{await api('/api/draft',{{decisions:state.decisions}});setDirty(false);announce('Draft saved.')}}catch(e){{setDirty(true);announce('Draft could not be saved: '+e.message)}}}}
 async function applyAll(){{if(!TOKEN){{downloadDecisions();return}}const destination=state.promotion?.model_path||`semantic/models/${{String(state.model_name).toLowerCase().replace(/[^a-z0-9]+/g,'_')}}.yaml`,confirmation=state.promotion_enabled?`Apply the complete audited decisions, validate Ossie, and promote to ${{destination}} if clean?`:'Apply the complete audited decisions and validate Ossie without promotion?';if(!confirm(confirmation))return;const button=document.getElementById('applyButton'),steps=['Compiling decisions','Applying patch','Validating Ossie',...(state.verify_snowflake?['Verifying Snowflake']:[]),...(state.promotion_enabled?['Promoting when eligible']:[])];let step=0;button.disabled=true;button.textContent=steps[0]+'…';announce(steps[0]+'.');const progressTimer=setInterval(()=>{{step=Math.min(step+1,steps.length-1);button.textContent=steps[step]+'…';announce(steps[step]+'.')}},700);try{{const body=await api('/api/apply',{{decisions:state.decisions,confirm_promote:true}});state=body.state;setDirty(false);render();announce(body.result.promoted?'Validation passed and model promoted.':'Apply complete. Review the validation result.');showToast(body.result.promoted?'Model validated and promoted.':'Apply and validation complete.')}}catch(e){{announce('Apply failed: '+e.message);showToast('Apply failed: '+e.message,true)}}finally{{clearInterval(progressTimer);button.disabled=false;button.textContent='Apply and validate'}}}}
-function downloadDecisions(){{const blob=new Blob([JSON.stringify(state.decisions,null,2)+'\\n'],{{type:'application/json'}}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=state.artifacts.decisions.split('/').pop();a.click();URL.revokeObjectURL(a.href);announce('Decisions JSON downloaded for later application.')}}async function finish(){{if(dirty&&!confirm('Finish with an unsaved browser draft?'))return;if(TOKEN){{try{{await api('/api/finish',{{}})}}catch(e){{showToast(e.message,true);return}}}}showToast('Review session finished. You may close this tab.')}}function showToast(message,isError=false){{const old=document.querySelector('.toast');if(old)old.remove();const el=document.createElement('div');el.className='toast';el.setAttribute('role',isError?'alert':'status');el.textContent=message;document.body.append(el);setTimeout(()=>el.remove(),6000)}}
-document.getElementById('saveButton').onclick=saveEditor;document.getElementById('removeButton').onclick=removeObject;document.getElementById('applyButton').onclick=applyAll;document.getElementById('finishButton').onclick=finish;if(!TOKEN)document.getElementById('applyButton').textContent='Download decisions';let scrollTimer;window.addEventListener('scroll',()=>{{clearTimeout(scrollTimer);scrollTimer=setTimeout(()=>sessionStorage.setItem('semantic-review-scroll-'+active,String(scrollY)),120)}});window.addEventListener('beforeunload',e=>{{if(dirty){{e.preventDefault();e.returnValue='' }}}});render();</script></body></html>'''
+function downloadDecisions(){{const blob=new Blob([JSON.stringify(state.decisions,null,2)+'\n'],{{type:'application/json'}}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=state.artifacts.decisions.split('/').pop();a.click();URL.revokeObjectURL(a.href);announce('Decisions JSON downloaded for later application.')}}async function finish(){{if(dirty&&!confirm('Finish with an unsaved browser draft?'))return;if(TOKEN){{try{{await api('/api/finish',{{}})}}catch(e){{showToast(e.message,true);return}}}}showToast('Review session finished. You may close this tab.')}}function showToast(message,isError=false){{const old=document.querySelector('.toast');if(old)old.remove();const el=document.createElement('div');el.className='toast';el.setAttribute('role',isError?'alert':'status');el.textContent=message;document.body.append(el);setTimeout(()=>el.remove(),6000)}}
+document.getElementById('saveButton').onclick=saveEditor;document.getElementById('removeButton').onclick=removeObject;document.getElementById('applyButton').onclick=applyAll;document.getElementById('finishButton').onclick=finish;if(!TOKEN)document.getElementById('applyButton').textContent='Download decisions';let scrollTimer;window.addEventListener('scroll',()=>{{clearTimeout(scrollTimer);scrollTimer=setTimeout(()=>sessionStorage.setItem('semantic-review-scroll-'+active,String(scrollY)),120)}});window.addEventListener('beforeunload',e=>{{if(dirty){{e.preventDefault();e.returnValue='' }}}});render();</script></body></html>"""
+
+
+def _refresh_summary_html(value: Any) -> str:
+    if not isinstance(value, dict):
+        return ""
+    summary = value.get("summary", {})
+    changes = value.get("changes", [])
+    if not isinstance(summary, dict) or not isinstance(changes, list):
+        return ""
+    status = "Existing promoted model" if value.get("status") == "refresh" else "New model"
+    items = []
+    for change in changes:
+        if not isinstance(change, dict):
+            continue
+        label = " ".join(
+            [
+                str(change.get("impact", "metadata")),
+                str(change.get("kind", "object")),
+                str(change.get("object", "unknown")),
+                str(change.get("change_type", "changed")),
+            ]
+        )
+        items.append(f"<li>{html.escape(label)}</li>")
+    details = ""
+    if items:
+        details = (
+            f"<details><summary>Review {len(items)} object-level changes</summary>"
+            f"<ul>{''.join(items)}</ul></details>"
+        )
+    return (
+        '<section class="panel" aria-labelledby="refresh-heading">'
+        '<div class="eyebrow">Refresh impact</div>'
+        '<h2 id="refresh-heading">Changes from the promoted model</h2>'
+        f"<p>{html.escape(status)}: {int(summary.get('added', 0))} added, "
+        f"{int(summary.get('removed', 0))} removed, "
+        f"{int(summary.get('changed', 0))} changed.</p>"
+        f"{details}</section>"
+    )
 
 
 def _handler_for(app: ReviewApplication) -> type[BaseHTTPRequestHandler]:
@@ -422,7 +467,10 @@ def _handler_for(app: ReviewApplication) -> type[BaseHTTPRequestHandler]:
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Referrer-Policy", "no-referrer")
-            self.send_header("Content-Security-Policy", "default-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'")
+            self.send_header(
+                "Content-Security-Policy",
+                "default-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'",
+            )
 
         def _json(self, status: HTTPStatus, value: Any) -> None:
             body = json.dumps(value, ensure_ascii=False).encode("utf-8")
@@ -444,6 +492,14 @@ def _handler_for(app: ReviewApplication) -> type[BaseHTTPRequestHandler]:
 def _editable_objects(model: dict[str, Any]) -> list[dict[str, Any]]:
     objects: list[dict[str, Any]] = []
     model_path = "/semantic_model/0"
+    datasets: Any = [item for item in model.get("datasets", []) if isinstance(item, dict)]
+    dataset_names = [str(item.get("name")) for item in datasets]
+    fields_by_dataset = {
+        str(item.get("name")): [
+            str(field.get("name")) for field in item.get("fields", []) if isinstance(field, dict)
+        ]
+        for item in datasets
+    }
     objects.append(
         _object(
             "ai_context",
@@ -456,7 +512,6 @@ def _editable_objects(model: dict[str, Any]) -> list[dict[str, Any]]:
             protected=True,
         )
     )
-    datasets = model.get("datasets", [])
     if isinstance(datasets, list):
         for dataset_index, dataset in enumerate(datasets):
             if not isinstance(dataset, dict):
@@ -478,8 +533,11 @@ def _editable_objects(model: dict[str, Any]) -> list[dict[str, Any]]:
                         "primary_key",
                         "unique_keys",
                         "ai_context",
-                        "custom_extensions",
                     ],
+                    options={
+                        "primary_key": fields_by_dataset.get(dataset_name, []),
+                        "unique_keys": fields_by_dataset.get(dataset_name, []),
+                    },
                 )
             )
             fields = dataset.get("fields", [])
@@ -502,7 +560,6 @@ def _editable_objects(model: dict[str, Any]) -> list[dict[str, Any]]:
                                 "expression",
                                 "dimension",
                                 "ai_context",
-                                "custom_extensions",
                             ],
                         )
                     )
@@ -518,7 +575,7 @@ def _editable_objects(model: dict[str, Any]) -> list[dict[str, Any]]:
                         "Model metric",
                         f"{model_path}/metrics/{index}",
                         metric,
-                        ["name", "description", "expression", "ai_context", "custom_extensions"],
+                        ["name", "description", "expression", "ai_context"],
                     )
                 )
     relationships = model.get("relationships", [])
@@ -540,9 +597,17 @@ def _editable_objects(model: dict[str, Any]) -> list[dict[str, Any]]:
                             "to",
                             "from_columns",
                             "to_columns",
-                            "description",
-                            "custom_extensions",
                         ],
+                        options={
+                            "from": dataset_names,
+                            "to": dataset_names,
+                            "from_columns": fields_by_dataset.get(
+                                str(relationship.get("from", "")), []
+                            ),
+                            "to_columns": fields_by_dataset.get(
+                                str(relationship.get("to", "")), []
+                            ),
+                        },
                     )
                 )
     return objects
@@ -558,6 +623,7 @@ def _object(
     properties: list[str],
     *,
     protected: bool = False,
+    options: dict[str, list[str]] | None = None,
 ) -> dict[str, Any]:
     labels = {
         "ai_context": "AI context",
@@ -571,13 +637,27 @@ def _object(
     for key in properties:
         exists = key in value
         current = value.get(key, "" if key in {"name", "description", "source"} else None)
+        kind = "text"
+        if key == "ai_context":
+            kind = "ai_context"
+        elif key == "expression":
+            kind = "expression"
+        elif key == "dimension":
+            kind = "dimension"
+        elif key in {"primary_key", "from_columns", "to_columns"}:
+            kind = "multi_select" if options and key in options else "string_list"
+        elif key == "unique_keys":
+            kind = "key_selects" if options and key in options else "key_lists"
+        elif options and key in options:
+            kind = "select"
         result.append(
             {
                 "label": labels.get(key, key.replace("_", " ").title()),
                 "path": f"{path}/{_escape_pointer(key)}",
                 "value": current,
                 "exists": exists,
-                "kind": "text" if isinstance(current, str) or current is None and key == "description" else "json",
+                "kind": kind,
+                "options": (options or {}).get(key, []),
                 "help": _property_help(key),
             }
         )
@@ -589,7 +669,50 @@ def _object(
         "path": path,
         "properties": result,
         "protected": protected,
+        "translation": _translation_info(value, path),
     }
+
+
+def _translation_info(value: dict[str, Any], path: str) -> dict[str, Any] | None:
+    extensions = value.get("custom_extensions", [])
+    if not isinstance(extensions, list):
+        return None
+    for index, extension in enumerate(extensions):
+        if not isinstance(extension, dict) or not isinstance(extension.get("data"), str):
+            continue
+        try:
+            data = json.loads(extension["data"])
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(data, dict) or data.get("kind") != "source_metadata":
+            continue
+        status = str(data.get("translation_status", "exact"))
+        if status == "exact":
+            return None
+        accepted_data = {**data, "translation_status": "exact"}
+        unsupported_data = {**data, "translation_status": "unsupported"}
+        requested_data = {
+            **data,
+            "review_request": "Additional business or technical evidence is required.",
+        }
+        return {
+            "status": status,
+            "source_expression": data.get("source_expression"),
+            "path": f"{path}/custom_extensions/{index}",
+            "accepted_value": {
+                **extension,
+                "data": json.dumps(accepted_data, sort_keys=True),
+            },
+            "unsupported_value": {
+                **extension,
+                "data": json.dumps(unsupported_data, sort_keys=True),
+            },
+            "requested_value": {
+                **extension,
+                "data": json.dumps(requested_data, sort_keys=True),
+            },
+        }
+    return None
 
 
 def _property_help(key: str) -> str:
@@ -597,15 +720,15 @@ def _property_help(key: str) -> str:
         "name": "Stable semantic name used by analysts and downstream references.",
         "description": "Plain-language business meaning, scope, and exclusions.",
         "source": "Qualified physical source or source expression.",
-        "primary_key": "JSON array of fields forming the primary key.",
-        "unique_keys": "JSON array of alternate unique-key arrays.",
+        "primary_key": "Select the fields that form the primary key.",
+        "unique_keys": "One alternate key per line; separate composite fields with commas.",
         "expression": "OSI expression object, including dialect-specific SQL when applicable.",
         "dimension": "OSI dimension metadata such as time or categorical behavior.",
         "ai_context": "Structured synonyms, examples, instructions, and other AI context.",
         "from": "Source dataset semantic name.",
         "to": "Target dataset semantic name.",
-        "from_columns": "JSON array of source-side key fields.",
-        "to_columns": "JSON array of target-side key fields.",
+        "from_columns": "Select the source-side relationship fields.",
+        "to_columns": "Select the target-side relationship fields.",
         "custom_extensions": (
             "Source and review metadata. Preserve unrelated entries; change translation status "
             "only when the supplied evidence fully resolves the source issue."

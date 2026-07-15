@@ -30,9 +30,7 @@ def main() -> int:
                 "type": "bar",
                 "title": "Gross sales by region",
                 "unit": "USD",
-                "data": [
-                    {"label": row[region_index], "value": row[sales_index]} for row in rows
-                ],
+                "data": [{"label": row[region_index], "value": row[sales_index]} for row in rows],
             },
         }
     )
@@ -52,6 +50,8 @@ def main() -> int:
             "metadata": {
                 "title": "Regional sales example",
                 "semantic_model": analysis["model"],
+                "period": analysis["period"]["label"],
+                "result_grain": ", ".join(analysis["result_grain"]),
                 "data_freshness": "synthetic example",
             },
         }
@@ -66,6 +66,10 @@ def _print_walkthrough(
     print(f"Question: {request['question']}")
     print(f"Answer: {request['answer']}")
     print(f"Model: {analysis['model']}")
+    print(f"Period: {analysis['period']['label']}")
+    print(f"Semantic grain: {', '.join(analysis['grain'])}")
+    print(f"Result grain: {', '.join(analysis['result_grain'])}")
+    print(f"Result limit: {analysis['max_rows']} rows (query limit {analysis['query_limit']})")
     print(f"Result validation: {analysis['result_validation']['status']}")
     print("SQL:")
     print(analysis["sql"])

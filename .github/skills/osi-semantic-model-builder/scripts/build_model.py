@@ -84,6 +84,19 @@ def main() -> int:
     print(f"Blocking issues: {response.get('blocking_issue_count', 0)}")
     print(f"Raw model: {response.get('raw_model_path')}")
     print(f"Manifest: {response.get('manifest_path')}")
+    refresh = response.get("refresh") or {}
+    refresh_summary = refresh.get("summary") or {}
+    print(
+        "Refresh changes: "
+        f"{refresh_summary.get('added', 0)} added, "
+        f"{refresh_summary.get('removed', 0)} removed, "
+        f"{refresh_summary.get('changed', 0)} changed"
+    )
+    for change in (refresh.get("changes") or [])[:10]:
+        print(
+            f"Change [{change.get('impact')}]: {change.get('kind')} "
+            f"{change.get('object')} {change.get('change_type')}"
+        )
     warnings = response.get("warnings", [])
     for warning in warnings[:10]:
         print(f"Review: {warning}")

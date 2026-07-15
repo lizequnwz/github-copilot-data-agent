@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 import yaml
@@ -29,8 +30,10 @@ def main() -> int:
         ".github/skills/osi-semantic-model-builder/agents/openai.yaml",
         ".github/skills/osi-semantic-model-builder/scripts/build_model.py",
         ".github/skills/analytics-report-generation/SKILL.md",
+        ".github/workflows/ci.yml",
         "snowflake_config.example.yaml",
         "semantic/models/demo_sales.yaml",
+        "semantic/tests/demo_sales.yaml",
         "ossie-main/core-spec/osi-schema.json",
         "ossie-main/validation/validate.py",
         "ossie-main/LICENSE",
@@ -38,6 +41,13 @@ def main() -> int:
         "docs/WORKFLOW.md",
         "docs/SEMANTIC_MODELS.md",
         "examples/analysis/sales-by-region.json",
+        "examples/analysis/sales-by-segment.json",
+        "examples/requests/osi-compile.json",
+        "examples/requests/osi-search.json",
+        "examples/requests/osi-test.json",
+        "examples/requests/osi-validate.json",
+        "data_agent/semantic/competency.py",
+        "data_agent/semantic/diff.py",
         "scripts/demo_analysis.py",
     ]
     for item in required:
@@ -73,7 +83,13 @@ def main() -> int:
     try:
         json.loads(SCHEMA.read_text())
         json.loads((ROOT / "examples/analysis/sales-by-region.json").read_text())
+        json.loads((ROOT / "examples/analysis/sales-by-segment.json").read_text())
+        json.loads((ROOT / "examples/requests/osi-compile.json").read_text())
+        json.loads((ROOT / "examples/requests/osi-search.json").read_text())
+        json.loads((ROOT / "examples/requests/osi-test.json").read_text())
+        json.loads((ROOT / "examples/requests/osi-validate.json").read_text())
         yaml.safe_load((ROOT / "snowflake_config.example.yaml").read_text())
+        yaml.safe_load((ROOT / "semantic/tests/demo_sales.yaml").read_text())
     except Exception as exc:
         errors.append(f"invalid JSON/YAML project artifact: {exc}")
 
@@ -92,6 +108,25 @@ def main() -> int:
             )
     except (OSError, subprocess.CalledProcessError):
         errors.append("Apache Ossie submodule is not initialized")
+
+    try:
+        official = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "ossie-main/validation/validate.py"),
+                str(ROOT / "semantic/models/demo_sales.yaml"),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if official.returncode != 0:
+            detail = (official.stdout or official.stderr).strip().splitlines()
+            errors.append(
+                "official Ossie validation failed for demo_sales.yaml"
+                + (f": {detail[-1]}" if detail else "")
+            )
+    except OSError as exc:
+        errors.append(f"could not run official Ossie validation: {exc}")
 
     legacy_term = "enter" + "prise"
     for path in ROOT.rglob("*"):

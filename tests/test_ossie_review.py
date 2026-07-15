@@ -90,9 +90,7 @@ class SemanticReviewTests(unittest.TestCase):
         after = [
             {
                 "name": "COMMON",
-                "data": json.dumps(
-                    {"kind": "source_metadata", "translation_status": "exact"}
-                ),
+                "data": json.dumps({"kind": "source_metadata", "translation_status": "exact"}),
             }
         ]
         self.assertTrue(_resolves_translation_issue(before, after))
@@ -252,6 +250,57 @@ class SemanticReviewTests(unittest.TestCase):
             self.assertFalse(result["clean"])
             self.assertFalse(result["promoted"])
             self.assertTrue(result["unresolved_assumptions"])
+
+    def test_failed_competency_preserves_previously_promoted_model(self) -> None:
+        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+            built = self._build(directory)
+            manifest = json.loads(Path(str(built["manifest_path"])).read_text())
+            patch_path = Path(directory) / "review.patch.json"
+            patch_path.write_text(
+                json.dumps(
+                    {
+                        "patch_version": "1.0",
+                        "base_model_sha256": manifest["osi"]["raw_model_sha256"],
+                        "operations": [],
+                    }
+                )
+            )
+            promotion_root = Path(directory) / "promotion-root"
+            tests_dir = promotion_root / "semantic/tests"
+            models_dir = promotion_root / "semantic/models"
+            tests_dir.mkdir(parents=True)
+            models_dir.mkdir(parents=True)
+            tests_dir.joinpath("review_sales.yaml").write_text(
+                """model: review_sales
+cases:
+  - id: incompatible_refresh
+    question: Use a removed field.
+    plan:
+      semantic_model: review_sales
+      metric_ids: [gross_sales]
+      dimensions: [sales.removed_field]
+    expected: {}
+"""
+            )
+            promoted_path = models_dir / "review_sales.yaml"
+            previous = "previous promoted model\n"
+            promoted_path.write_text(previous)
+
+            with patch("data_agent.semantic.review.ROOT", promotion_root):
+                result = review_semantic(
+                    {
+                        "request_id": "review-failed-competency",
+                        "raw_model_path": built["raw_model_path"],
+                        "manifest_path": built["manifest_path"],
+                        "patch_path": str(patch_path),
+                        "promote_if_clean": True,
+                    }
+                )
+
+            self.assertFalse(result["clean"])
+            self.assertFalse(result["promoted"])
+            self.assertEqual(result["competency_tests"]["status"], "failed")
+            self.assertEqual(promoted_path.read_text(), previous)
 
     def test_add_replace_remove_and_path_guardrails(self) -> None:
         with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:

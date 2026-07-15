@@ -25,6 +25,7 @@ source export
   -> <model>.review.decisions.json
   -> compiled audited review patch
   -> deterministic patch application and revalidation
+  -> per-model competency questions
   -> <model>.osi.yaml
   -> automatic promotion when clean
 ```
@@ -86,18 +87,28 @@ uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py S
   --model-name MODEL --review-ui
 ```
 
-The workspace is issue-first and separates datasets, fields, metrics, relationships, and AI
-context. Users can add, update, remove, or rename semantic objects through guided editors, with an
-advanced JSON operation editor for uncommon OSI constructs. Every change requires rationale,
-evidence, confidence, and explicit assumptions. Destructive changes require confirmation and can
-be undone before Apply. Structural references are updated for unambiguous renames; expression
-references that cannot be rewritten safely block Apply and require an explicit correction.
+Before the workspace opens, conversion compares the deterministic raw model with any currently
+promoted model of the same name. The manifest, command summary, and workspace show object-level
+added, removed, and changed items with `breaking`, `semantic`, or `metadata` impact.
+
+The workspace is issue-first and offers Business and Analyst views across datasets, fields,
+metrics, relationships, and AI context. Guided editors cover descriptions, synonyms, examples,
+instructions, sources, keys, relationships, dialect expressions, and translation decisions.
+Selected translations with the same status may share one reviewed decision while emitting one
+audited operation per object. The advanced JSON operation editor remains available for uncommon
+OSI constructs. Every change requires rationale, evidence, confidence, and explicit assumptions.
+Destructive changes require confirmation and can be undone before Apply. Structural references are
+updated for unambiguous renames; expression references that cannot be rewritten safely block Apply.
 
 Drafts auto-save under `semantic/generated/` but do not change OSI or count as review evidence.
 On Apply, Python validates the complete decisions file against the original raw SHA-256, generates
 the audited patch, protects the OSI version and converter provenance, records before/after values,
-and reruns official and readiness validation. The workspace retains failed edits and displays the
-recovery action. A clean model is promoted only after the destination is confirmed.
+and reruns official, readiness, and matching `semantic/tests/<model>.yaml` competency validation.
+The workspace retains failed edits and displays the recovery action. A clean model is promoted only
+after the destination is confirmed.
+
+Competency fixtures contain deterministic questions, structured plans, expected semantic and
+result grain, and required or excluded SQL fragments. They do not execute analytical queries.
 
 The server binds exclusively to `127.0.0.1` and uses a random session token, exact Origin checks,
 JSON-only bounded requests, no CORS, and restricted artifact paths. `--review-port PORT` selects a
@@ -127,8 +138,10 @@ The `data-agent` runner exposes the same deterministic stages for automation:
 | `semantic-convert` | Supply `source_path`, optional `source_type`/mappings, and `model_name`; receive raw and manifest paths. |
 | `semantic-review` | Supply `raw_model_path`, `manifest_path`, and `patch_path`; optionally request Snowflake verification or disable promotion. |
 | `osi-validate` | Supply `model_path`; receive separate official-validation and project-readiness results. |
+| `osi-test` | Supply `model_path` and `cases_path`; compile every competency case and report failures. |
+| `semantic-diff` | Supply `before_path` and `after_path`; receive object-level breaking, semantic, and metadata changes. |
 
-All three use the existing `--input REQUEST.json --output RESPONSE.json` CLI contract.
+All commands use the existing `--input REQUEST.json --output RESPONSE.json` CLI contract.
 
 ## Upstream references
 

@@ -54,8 +54,9 @@ def validate_sql(
         raise SQLSafetyError("sql must be a non-empty string")
     if len(sql.encode("utf-8")) > 500_000:
         raise SQLSafetyError("sql exceeds 500000 bytes")
+    parse_sql = re.sub(r"%s\b", "NULL", sql)
     try:
-        statements = sqlglot.parse(sql, read="snowflake")
+        statements = sqlglot.parse(parse_sql, read="snowflake")
     except sqlglot.errors.ParseError as exc:
         raise SQLSafetyError(f"Snowflake SQL parse failed: {exc}") from exc
     if len(statements) != 1:

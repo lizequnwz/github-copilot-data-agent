@@ -9,6 +9,7 @@ import yaml
 
 from data_agent.bi.extract import extract_generic_ir, extract_powerbi_ir, extract_tableau_ir
 from data_agent.io import ContractError, envelope, require_string, write_json_atomic
+from data_agent.semantic.diff import semantic_changes
 from data_agent.semantic.ingestion import OSI_VERSION, build_osi_from_ir
 from data_agent.semantic.models import load_document
 from data_agent.semantic.ossie import (
@@ -173,6 +174,16 @@ def convert_semantic(request: dict[str, Any]) -> dict[str, Any]:
     manifest_path = output_root / f"{slug}.conversion.json"
     model_path.write_text(yaml_text, encoding="utf-8")
 
+    promoted_path = ROOT / "semantic/models" / f"{slug}.yaml"
+    previous_document = (
+        load_document(promoted_path) if promoted_path.is_file() else {"semantic_model": []}
+    )
+    refresh = {
+        "status": "refresh" if promoted_path.is_file() else "new_model",
+        "previous_model_path": str(promoted_path.relative_to(ROOT)),
+        **semantic_changes(previous_document, document),
+    }
+
     state_counts = _translation_counts(ir)
     blockers = sum(issue.get("severity") == "blocking" for issue in issues)
     manifest = {
@@ -199,6 +210,7 @@ def convert_semantic(request: dict[str, Any]) -> dict[str, Any]:
         },
         "summary": ir_summary,
         "translation_states": state_counts,
+        "refresh": refresh,
         "issues": issues,
         "review_checklist": [
             "Resolve every blocking issue and physical source placeholder.",
@@ -223,5 +235,6 @@ def convert_semantic(request: dict[str, Any]) -> dict[str, Any]:
         issue_count=len(issues),
         blocking_issue_count=blockers,
         summary=ir_summary,
+        refresh=refresh,
         warnings=[str(issue["message"]) for issue in issues],
     )

@@ -47,9 +47,7 @@ def _formatted_number(value: float, spec: Any, *, compact_default: bool = False)
     currency = ""
     if style == "currency":
         code = str(spec.get("currency", "USD")).upper()
-        currency = {"USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥"}.get(
-            code, f"{code} "
-        )
+        currency = {"USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥"}.get(code, f"{code} ")
     suffix = "%" if style == "percent" else ""
     return f"{currency}{number}{compact_suffix}{suffix}"
 
@@ -105,14 +103,14 @@ def render_chart(request: dict[str, Any]) -> dict[str, Any]:
         value = low + (span * tick / 4)
         y = top + plot_h - (tick / 4) * plot_h
         parts.append(
-            f'<line x1="{left}" x2="{width-right}" y1="{y:.1f}" y2="{y:.1f}" stroke="currentColor" stroke-opacity=".18" stroke-width="1"/>'
+            f'<line x1="{left}" x2="{width - right}" y1="{y:.1f}" y2="{y:.1f}" stroke="currentColor" stroke-opacity=".18" stroke-width="1"/>'
         )
         parts.append(
-            f'<text x="{left-12}" y="{y+4:.1f}" text-anchor="end" font-size="12">{html.escape(_formatted_number(value, value_format, compact_default=True))}</text>'
+            f'<text x="{left - 12}" y="{y + 4:.1f}" text-anchor="end" font-size="12">{html.escape(_formatted_number(value, value_format, compact_default=True))}</text>'
         )
     zero_y = top + ((high - 0.0) / span) * plot_h
     parts.append(
-        f'<line x1="{left}" x2="{width-right}" y1="{zero_y:.1f}" y2="{zero_y:.1f}" stroke="currentColor" stroke-opacity=".55" stroke-width="1.5"/>'
+        f'<line x1="{left}" x2="{width - right}" y1="{zero_y:.1f}" y2="{zero_y:.1f}" stroke="currentColor" stroke-opacity=".55" stroke-width="1.5"/>'
     )
     if unit:
         parts.append(
@@ -127,11 +125,15 @@ def render_chart(request: dict[str, Any]) -> dict[str, Any]:
             bar_h = max(abs(value_y - zero_y), 1.5)
             x = left + index * slot + slot * 0.16
             parts.append(
-                f'<rect x="{x:.1f}" y="{bar_top:.1f}" width="{slot*0.68:.1f}" height="{bar_h:.1f}" rx="4" fill="#3b82f6"/>'
+                f'<rect x="{x:.1f}" y="{bar_top:.1f}" width="{slot * 0.68:.1f}" height="{bar_h:.1f}" rx="4" fill="#3b82f6"/>'
             )
-            label_y = max(bar_top - 8, 16) if value >= 0 else min(bar_top + bar_h + 16, height - bottom + 24)
+            label_y = (
+                max(bar_top - 8, 16)
+                if value >= 0
+                else min(bar_top + bar_h + 16, height - bottom + 24)
+            )
             parts.append(
-                f'<text x="{x+slot*0.34:.1f}" y="{label_y:.1f}" text-anchor="middle" font-size="12" font-weight="600">{html.escape(_formatted_number(value, value_format, compact_default=True))}</text>'
+                f'<text x="{x + slot * 0.34:.1f}" y="{label_y:.1f}" text-anchor="middle" font-size="12" font-weight="600">{html.escape(_formatted_number(value, value_format, compact_default=True))}</text>'
             )
     else:
         points: list[tuple[float, float]] = []
@@ -145,19 +147,25 @@ def render_chart(request: dict[str, Any]) -> dict[str, Any]:
             + '" fill="none" stroke="#3b82f6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'
         )
         for (x, y), value in zip(points, values):
-            parts.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5" fill="#3b82f6" stroke="currentColor" stroke-width="2"/>')
             parts.append(
-                f'<text x="{x:.1f}" y="{max(y-12, 18):.1f}" text-anchor="middle" font-size="12" font-weight="600">{html.escape(_formatted_number(value, value_format, compact_default=True))}</text>'
+                f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5" fill="#3b82f6" stroke="currentColor" stroke-width="2"/>'
+            )
+            parts.append(
+                f'<text x="{x:.1f}" y="{max(y - 12, 18):.1f}" text-anchor="middle" font-size="12" font-weight="600">{html.escape(_formatted_number(value, value_format, compact_default=True))}</text>'
             )
 
     label_step = max(1, math.ceil(len(labels) / 12))
     for index, label in enumerate(labels):
         if index % label_step:
             continue
-        x = left + (index + 0.5) * slot if spec["type"] == "bar" else left + (index / max(len(labels) - 1, 1)) * plot_w
+        x = (
+            left + (index + 0.5) * slot
+            if spec["type"] == "bar"
+            else left + (index / max(len(labels) - 1, 1)) * plot_w
+        )
         short_label = label if len(label) <= 18 else label[:17] + "…"
         parts.append(
-            f'<text x="{x:.1f}" y="{height-44}" text-anchor="middle" font-size="12">{html.escape(short_label)}</text>'
+            f'<text x="{x:.1f}" y="{height - 44}" text-anchor="middle" font-size="12">{html.escape(short_label)}</text>'
         )
     parts.extend(["</g>", "</svg>"])
     svg = "".join(parts)

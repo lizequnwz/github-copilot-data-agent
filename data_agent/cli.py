@@ -11,7 +11,9 @@ from data_agent.io import ContractError, envelope, read_json, write_json_atomic
 from data_agent.reporting.render import render_chart, render_report
 from data_agent.security.sql import SQLSafetyError, validate_sql
 from data_agent.semantic.compiler import compile_plan
+from data_agent.semantic.competency import run_competency_tests
 from data_agent.semantic.conversion import convert_semantic
+from data_agent.semantic.diff import semantic_changes
 from data_agent.semantic.models import (
     SemanticError,
     load_document,
@@ -82,12 +84,14 @@ def handle_semantic_diff(request: dict[str, Any]) -> dict[str, Any]:
     after = load_document(str(request.get("after_path")))
     before_text = json.dumps(before, sort_keys=True, separators=(",", ":"))
     after_text = json.dumps(after, sort_keys=True, separators=(",", ":"))
+    diff = semantic_changes(before, after)
     return envelope(
         request,
         "success",
         changed=before_text != after_text,
         before_sha256=_sha(before_text),
         after_sha256=_sha(after_text),
+        **diff,
         warnings=[],
     )
 
@@ -111,6 +115,7 @@ HANDLERS: dict[str, Handler] = {
     "validate-sql": handle_validate_sql,
     "osi-validate": handle_osi_validate,
     "osi-search": handle_osi_search,
+    "osi-test": run_competency_tests,
     "osi-compile": handle_osi_compile,
     "semantic-convert": convert_semantic,
     "semantic-review": review_semantic,

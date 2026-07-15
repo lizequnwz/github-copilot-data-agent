@@ -103,10 +103,23 @@ def review_semantic(request: dict[str, Any]) -> dict[str, Any]:
 
         verification = verify_semantic_model({**request, "document": reviewed})
 
+    model_name = str(reviewed["semantic_model"][0]["name"])
+    competency_path = ROOT / "semantic/tests" / f"{_slug(model_name)}.yaml"
+    competency: dict[str, Any] = {"status": "not_configured"}
+    if competency_path.is_file():
+        from data_agent.semantic.competency import test_document
+
+        competency_result = test_document(reviewed, competency_path)
+        competency = {
+            "status": "passed" if competency_result["passed"] else "failed",
+            **competency_result,
+        }
+
     clean = (
         validation["analysis_ready"]
         and not unresolved_assumptions
         and verification.get("status") in {"not_requested", "passed"}
+        and competency.get("status") in {"not_configured", "passed"}
     )
     final_path = _final_for_raw(raw_path)
     final_text = yaml.safe_dump(reviewed, sort_keys=False, allow_unicode=True)
@@ -115,7 +128,6 @@ def review_semantic(request: dict[str, Any]) -> dict[str, Any]:
 
     promoted_path: Path | None = None
     if clean and request.get("promote_if_clean", True) is True:
-        model_name = str(reviewed["semantic_model"][0]["name"])
         promoted_path = ROOT / "semantic/models" / f"{_slug(model_name)}.yaml"
         promoted_path.parent.mkdir(parents=True, exist_ok=True)
         temporary = promoted_path.with_suffix(".yaml.tmp")
@@ -131,6 +143,7 @@ def review_semantic(request: dict[str, Any]) -> dict[str, Any]:
     )
     manifest["updated_at"] = datetime.now(timezone.utc).isoformat()
     manifest["warehouse_verification"] = verification
+    manifest["competency_tests"] = competency
     manifest["review"] = {
         "required": True,
         "patch_path": _relative_or_absolute(patch_path),
@@ -162,6 +175,7 @@ def review_semantic(request: dict[str, Any]) -> dict[str, Any]:
         official_valid=validation["official_valid"],
         analysis_ready=validation["analysis_ready"],
         warehouse_verification=verification,
+        competency_tests=competency,
         warnings=[issue["message"] for issue in validation["readiness_issues"]],
     )
 
@@ -225,9 +239,7 @@ def _validate_operation(operation: Any, index: int, raw_sha: str) -> None:
                 f"review operation {index} evidence {evidence_index} must be an object"
             )
         if not isinstance(evidence.get("type"), str) or not evidence["type"].strip():
-            raise ContractError(
-                f"review operation {index} evidence {evidence_index} requires type"
-            )
+            raise ContractError(f"review operation {index} evidence {evidence_index} requires type")
         if not isinstance(evidence.get("reference"), str) or not evidence["reference"].strip():
             raise ContractError(
                 f"review operation {index} evidence {evidence_index} requires reference"

@@ -275,6 +275,8 @@ class SemanticConversionTests(unittest.TestCase):
             self.assertEqual(validate_document(generated, SCHEMA), [])
             self.assertTrue(manifest["osi"]["schema_valid"])
             self.assertEqual(manifest["summary"]["metrics"], 1)
+            self.assertEqual(manifest["refresh"]["status"], "new_model")
+            self.assertGreater(manifest["refresh"]["summary"]["added"], 0)
 
 
 if __name__ == "__main__":

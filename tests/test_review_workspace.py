@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import http.client
 import json
+import re
+import shutil
+import subprocess
 import tempfile
 import threading
 import unittest
@@ -14,7 +17,9 @@ from data_agent.semantic.conversion import convert_semantic
 from data_agent.semantic.review_workspace import (
     ReviewApplication,
     MAX_REQUEST_BYTES,
+    _editable_objects,
     _handler_for,
+    _translation_info,
     compile_decisions,
     default_decisions,
     render_review_html,
@@ -168,14 +173,108 @@ class ReviewWorkspaceTests(unittest.TestCase):
             document = render_review_html(state)
             for expected in (
                 "Skip to review workspace",
-                "aria-live=\"polite\"",
+                'aria-live="polite"',
                 "prefers-reduced-motion",
                 "prefers-color-scheme:dark",
                 "Apply and validate",
                 "Download decisions",
+                "Review as",
+                "Refresh impact",
+                "object-level changes",
+                "Accept translation",
+                "Retain as unsupported",
+                "Business",
+                "Analyst",
             ):
                 self.assertIn(expected, document)
             self.assertNotIn("https://", document)
+
+    def test_embedded_workspace_javascript_parses(self) -> None:
+        node = shutil.which("node")
+        if node is None:
+            self.skipTest("Node.js is unavailable for static JavaScript validation")
+        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+            _, paths = self._build(directory)
+            state = ReviewApplication(
+                paths,
+                request_id="workspace-js",
+                verify_snowflake=False,
+                config_path="snowflake_config.yaml",
+                configuration_confirmed=False,
+                promote_if_clean=False,
+            ).state()
+            document = render_review_html(state)
+            match = re.search(r"<script>(.*?)</script>", document, re.DOTALL)
+            self.assertIsNotNone(match)
+            assert match is not None
+            checked = subprocess.run(
+                [node, "--check", "-"],
+                input=match.group(1),
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(checked.returncode, 0, checked.stderr)
+
+    def test_translation_review_builds_audited_status_values(self) -> None:
+        value = {
+            "custom_extensions": [
+                {
+                    "vendor_name": "COMMON",
+                    "data": json.dumps(
+                        {
+                            "kind": "source_metadata",
+                            "source_expression": "AVG([Sales])",
+                            "translation_status": "equivalent-with-assumptions",
+                        }
+                    ),
+                }
+            ]
+        }
+        translation = _translation_info(value, "/semantic_model/0/metrics/0")
+        self.assertIsNotNone(translation)
+        assert translation is not None
+        self.assertEqual(translation["path"], "/semantic_model/0/metrics/0/custom_extensions/0")
+        accepted = json.loads(translation["accepted_value"]["data"])
+        self.assertEqual(accepted["translation_status"], "exact")
+        unsupported = json.loads(translation["unsupported_value"]["data"])
+        self.assertEqual(unsupported["translation_status"], "unsupported")
+
+    def test_keys_and_relationship_fields_use_guided_selectors(self) -> None:
+        document = {
+            "name": "sales",
+            "datasets": [
+                {
+                    "name": "orders",
+                    "source": "DB.SCHEMA.ORDERS",
+                    "fields": [{"name": "customer_id"}, {"name": "order_id"}],
+                    "primary_key": ["order_id"],
+                    "unique_keys": [["customer_id", "order_id"]],
+                },
+                {
+                    "name": "customers",
+                    "source": "DB.SCHEMA.CUSTOMERS",
+                    "fields": [{"name": "customer_id"}],
+                },
+            ],
+            "relationships": [
+                {
+                    "name": "orders_to_customers",
+                    "from": "orders",
+                    "to": "customers",
+                    "from_columns": ["customer_id"],
+                    "to_columns": ["customer_id"],
+                }
+            ],
+        }
+        objects = _editable_objects(document)
+        datasets = next(item for item in objects if item["id"] == "dataset-0")
+        relationships = next(item for item in objects if item["id"] == "relationship-0")
+        dataset_kinds = {item["label"]: item["kind"] for item in datasets["properties"]}
+        relationship_kinds = {item["label"]: item["kind"] for item in relationships["properties"]}
+        self.assertEqual(dataset_kinds["Primary key"], "multi_select")
+        self.assertEqual(dataset_kinds["Unique keys"], "key_selects")
+        self.assertEqual(relationship_kinds["From columns"], "multi_select")
+        self.assertEqual(relationship_kinds["To columns"], "multi_select")
 
     def test_loopback_server_rejects_bad_token_and_origin_and_saves_draft(self) -> None:
         with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:

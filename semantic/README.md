@@ -8,8 +8,11 @@ Use the `osi-semantic-model-builder` skill or run:
 
 ```bash
 uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py SOURCE \
-  --model-name MODEL
+  --model-name MODEL --review-ui
 ```
 
-Review generated physical mappings, keys, relationships, and important metric expressions before
-copying a model into `models/`. See [Semantic models](../docs/SEMANTIC_MODELS.md).
+Use Business or Analyst view to review meaning, mappings, keys, relationships, translations,
+expressions, and AI context. **Apply and validate** creates audited decisions and a patch, runs the
+official/readiness validators plus `tests/<model>.yaml` when present, and promotes only a clean
+model after destination confirmation. Manual copying is not the normal promotion path. See
+[Semantic models](../docs/SEMANTIC_MODELS.md).

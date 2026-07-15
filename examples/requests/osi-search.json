@@ -1,0 +1,6 @@
+{
+  "request_id": "search-sales-semantics",
+  "roots": ["semantic/models"],
+  "query": "gross sales by region and customer segment",
+  "limit": 10
+}

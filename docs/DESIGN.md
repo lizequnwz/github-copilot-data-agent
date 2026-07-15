@@ -7,12 +7,13 @@ The agent follows a skill and invokes local Python commands for deterministic wo
 
 ```text
 Business question
-  -> semantic model search and clarification
-  -> structured metric/dimension/filter plan
+  -> Ask Data interpretation card and material clarification
+  -> semantic model search
+  -> structured metric/dimension/filter/time-range/order plan
   -> Snowflake SQL compilation or preparation
-  -> SQL validation and bounded read-only execution
+  -> SQL validation and max_rows + 1 read-only execution
   -> result validation
-  -> answer, with an optional report
+  -> answer with semantic grain, result grain, SQL, query details, and optional report
 ```
 
 Semantic models enter through a parallel builder workflow:
@@ -25,6 +26,7 @@ Power BI / Tableau / JSON / YAML / neutral IR / Ossie
   -> deterministic raw OSI and official validation
   -> audited LLM review patch
   -> deterministic patch application and readiness validation
+  -> per-model competency tests and object-level change impact
   -> optional Snowflake metadata/expression verification
   -> final model and clean automatic promotion
 ```
@@ -44,9 +46,19 @@ Power BI / Tableau / JSON / YAML / neutral IR / Ossie
 | `data_agent/tools/result_validation.py` | Checks result shape before interpretation. |
 | `data_agent/reporting/` | Creates optional SVG charts and HTML reports. |
 
+The review workspace provides Business and Analyst views over one audited decisions artifact.
+Business reviewers work with definitions, exclusions, synonyms, questions, and translation cards;
+analysts work with sources, fields, keys, relationships, and expressions. Normal decisions use
+guided controls. Raw JSON Pointer operations remain available only as an advanced escape hatch.
+
+Refresh compares semantic objects instead of only file hashes. Each change is classified as
+`breaking`, `semantic`, or `metadata`. The previously promoted model remains active until the new
+draft passes official validation, readiness checks, competency tests, and explicit promotion.
+
 ## Deliberate limits
 
-- The semantic compiler supports direct metrics, dimensions, filters, and simple join paths.
+- The semantic compiler supports direct metrics, dimensions, parameterized filters, bounded time
+  ranges, selected-projection ordering, and simple join paths.
 - Power BI and Tableau conversion does not attempt full DAX, M, LOD, table-calculation, parameter,
   filter, or role translation.
 - Binary PBIX and packaged TWBX files must be exported or unpacked before conversion.

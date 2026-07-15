@@ -32,7 +32,8 @@ def analyze(request: dict[str, Any]) -> dict[str, Any]:
                 **request,
                 "sql": compiled["sql"],
                 "parameters": compiled["parameters"],
-                "max_rows": plan.get("max_rows", settings.max_rows),
+                "max_rows": min(compiled["max_rows"], settings.max_rows),
+                "query_limit": compiled["query_limit"],
             }
         )
     else:
@@ -44,8 +45,14 @@ def analyze(request: dict[str, Any]) -> dict[str, Any]:
                 "planned",
                 model=compiled["model"],
                 grain=compiled["grain"],
+                result_grain=compiled["result_grain"],
+                result_columns=compiled["result_columns"],
                 sql=compiled["sql"],
                 parameters=compiled["parameters"],
+                max_rows=compiled["max_rows"],
+                query_limit=compiled["query_limit"],
+                period=compiled["period"],
+                normalized_plan=compiled["normalized_plan"],
                 sql_validation=sql_validation.as_dict(),
                 warnings=list(sql_validation.warnings),
             )
@@ -60,7 +67,7 @@ def analyze(request: dict[str, Any]) -> dict[str, Any]:
         {
             "request_id": request.get("request_id", "analysis"),
             "result": result,
-            "grain": checks.get("grain", compiled["grain"]),
+            "grain": checks.get("grain", compiled["result_grain"]),
             "required_columns": checks.get("required_columns", []),
             "required_non_null": checks.get("required_non_null", []),
             "numeric_ranges": checks.get("numeric_ranges", {}),
@@ -71,8 +78,14 @@ def analyze(request: dict[str, Any]) -> dict[str, Any]:
         "success" if validated["status"] == "pass" else "validation_failed",
         model=compiled["model"],
         grain=compiled["grain"],
+        result_grain=compiled["result_grain"],
+        result_columns=compiled["result_columns"],
         sql=compiled["sql"],
         parameters=compiled["parameters"],
+        max_rows=compiled["max_rows"],
+        query_limit=compiled["query_limit"],
+        period=compiled["period"],
+        normalized_plan=compiled["normalized_plan"],
         sql_validation=sql_validation.as_dict(),
         result=result,
         result_validation=validated,

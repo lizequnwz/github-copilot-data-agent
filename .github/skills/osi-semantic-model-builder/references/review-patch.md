@@ -1,4 +1,7 @@
-# Audited review patch
+# Audited review patch (advanced)
+
+The interactive workspace normally creates this file from reviewed decisions. Edit it manually
+only for audit, debugging, or automation that cannot use `--review-ui` or `--review-decisions`.
 
 The agent must express every semantic change as a JSON operation against the deterministic raw
 model. The raw SHA-256 comes from `osi.raw_model_sha256` in the conversion manifest.

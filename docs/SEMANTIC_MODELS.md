@@ -21,7 +21,9 @@ source export
   -> official Ossie + analysis-readiness validation
   -> <model>.raw.osi.yaml
   -> <model>.conversion.json
-  -> audited LLM review patch
+  -> interactive business + analyst decisions
+  -> <model>.review.decisions.json
+  -> compiled audited review patch
   -> deterministic patch application and revalidation
   -> <model>.osi.yaml
   -> automatic promotion when clean
@@ -77,19 +79,39 @@ uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py \
   tests/fixtures/generic/sales.yaml --model-name demo_generic
 ```
 
-Review the conversion manifest first. Resolve physical source blockers, then inspect important
-keys, relationships, fields, and metric expressions. Create the audited JSON patch described in
-the skill reference and rerun with:
+The normal workflow opens the interactive review workspace:
 
 ```bash
 uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py SOURCE \
-  --model-name MODEL --review-patch semantic/generated/MODEL.review.patch.json
+  --model-name MODEL --review-ui
 ```
 
-Every patch operation repeats the raw model hash and records rationale, evidence, confidence, and
-assumptions. Python protects the OSI version and conversion provenance, applies the patch, reruns
-official validation, and promotes only a clean reviewed model. Assumptions remain visible in the
-manifest and prevent automatic promotion.
+The workspace is issue-first and separates datasets, fields, metrics, relationships, and AI
+context. Users can add, update, remove, or rename semantic objects through guided editors, with an
+advanced JSON operation editor for uncommon OSI constructs. Every change requires rationale,
+evidence, confidence, and explicit assumptions. Destructive changes require confirmation and can
+be undone before Apply. Structural references are updated for unambiguous renames; expression
+references that cannot be rewritten safely block Apply and require an explicit correction.
+
+Drafts auto-save under `semantic/generated/` but do not change OSI or count as review evidence.
+On Apply, Python validates the complete decisions file against the original raw SHA-256, generates
+the audited patch, protects the OSI version and converter provenance, records before/after values,
+and reruns official and readiness validation. The workspace retains failed edits and displays the
+recovery action. A clean model is promoted only after the destination is confirmed.
+
+The server binds exclusively to `127.0.0.1` and uses a random session token, exact Origin checks,
+JSON-only bounded requests, no CORS, and restricted artifact paths. `--review-port PORT` selects a
+port; otherwise an available port is chosen. `--no-open` prints the URL without opening a browser.
+The static `<model>.review.html` fallback can download decisions JSON for later application:
+
+```bash
+uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py SOURCE \
+  --model-name MODEL --review-decisions PATH
+```
+
+Manual JSON patching with `--review-patch` remains supported for advanced audit/debugging. In both
+paths, assumptions and low-confidence logic changes remain visible and prevent automatic
+promotion.
 
 Snowflake verification is optional. Add `--verify-snowflake --configuration-confirmed` only after
 displaying and confirming the non-secret connection context. It checks object metadata and uses

@@ -1,6 +1,7 @@
 ---
 name: analytics-report-generation
 description: Create an accessible Python-rendered SVG chart or self-contained responsive HTML report from validated aggregate results. Use when a user explicitly asks to visualize, package, or share an analysis result.
+allowed-tools: ["read", "search", "edit", "execute"]
 ---
 
 # Procedure
@@ -12,6 +13,11 @@ description: Create an accessible Python-rendered SVG chart or self-contained re
 5. Provide the chart and its underlying table to `render-report`.
 6. Include the direct finding, definitions, methodology, and useful caveats. Include semantic model, freshness, query ID, role, and SQL when they are available from a live query.
 7. Write the final HTML under `reports/generated/` and verify it contains the expected title, rows, query details, responsive viewport, and chart text alternative.
+8. When display formatting matters, pass `column_formats` keyed by report column and
+   `value_format` in the chart spec. Supported styles are number, currency, and percentage, with
+   optional decimals, compact notation, and currency code.
+9. Supply `period` and `data_freshness` when known. The renderer records generation time and keeps
+   chart backgrounds transparent for both themes.
 
 # UX requirements
 

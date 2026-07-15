@@ -1,6 +1,7 @@
 ---
 name: osi-semantic-model-builder
 description: Build and review an Apache Ossie/Open Semantic Interchange (OSI) model from exported Power BI PBIP/TMDL, Tableau TWB/TDS/TDE metadata, generic JSON/YAML, neutral semantic IR, or an existing Ossie document. Use when a user wants to import, convert, validate, inspect, enrich, or refresh BI semantic metadata for use by the Snowflake data agent.
+allowed-tools: ["read", "search", "edit", "execute"]
 ---
 
 # OSI semantic model builder
@@ -16,8 +17,8 @@ OSI model directly from source metadata or from an unaudited LLM response.
 - Neutral IR or Ossie: pass the JSON/YAML document directly.
 
 Read [references/supported-inputs.md](references/supported-inputs.md) for mappings and expression
-limits, [references/examples.md](references/examples.md) for commands, and
-[references/review-patch.md](references/review-patch.md) before semantic review.
+limits and [references/examples.md](references/examples.md) for commands. Read
+[references/review-patch.md](references/review-patch.md) only for advanced manual review.
 
 ## Stage 1: deterministic raw model
 
@@ -37,25 +38,29 @@ The converter uses the schema and validation functions from the pinned `ossie-ma
 Portable translated expressions use `ANSI_SQL`; source-native expressions are preserved in their
 official Ossie dialect or in provenance extensions.
 
-## Stage 2: audited agent review
+## Stage 2: interactive audited review
 
-1. Read the raw model, manifest, source metadata, and relevant business context.
-2. Create `<model>.review.patch.json` using the exact raw hash from the manifest.
-3. Repeat the raw model hash on every operation, and give every operation a rationale, evidence,
-   confidence, and assumptions. Descriptions, synonyms, examples, instructions, expressions,
-   keys, relationships, and sources may be fixed, but never invent evidence or alter converter
-   provenance.
-4. Apply the patch only through the builder:
+1. Launch the builder with the source mappings and `--review-ui`:
 
    ```bash
    uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py SOURCE \
-     --model-name MODEL --review-patch semantic/generated/MODEL.review.patch.json
+     --model-name MODEL --review-ui
    ```
 
-5. The deterministic applier writes `<model>.osi.yaml`, reruns official and readiness validation,
-   records the complete before/after audit, and promotes only a clean result to `semantic/models/`.
+2. Lead with blocking issues. Ask business users for meaning, exclusions, synonyms, and expected
+   questions; ask analysts for mappings, keys, relationships, grain, and expressions.
+3. Use the focused editors for descriptions, synonyms, examples, instructions, expressions,
+   keys, relationships, and sources. Give every change rationale, evidence, confidence, and
+   assumptions. Never invent evidence or alter converter provenance.
+4. Select **Apply and validate** and confirm the proposed promotion destination. The backend
+   compiles the complete decisions artifact into the audited patch and applies it deterministically.
+5. The applier writes `<model>.osi.yaml`, reruns official and readiness validation, records the
+   complete before/after audit, and promotes only a clean result to `semantic/models/`.
 6. If assumptions remain, leave the reviewed model under `semantic/generated/` and report the
    exact evidence or user decision needed.
+
+Use `--no-open` for a headless launch. Use a downloaded decisions file with
+`--review-decisions PATH`. Manual `--review-patch` is an advanced audit/debugging path.
 
 ## Optional Snowflake verification
 

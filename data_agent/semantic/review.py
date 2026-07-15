@@ -47,10 +47,7 @@ def review_semantic(request: dict[str, Any]) -> dict[str, Any]:
     raw_sha = sha256_text(raw_text)
     raw_document = load_document(raw_path)
     patch = _load_patch(patch_path)
-    if patch["base_model_sha256"] != raw_sha:
-        raise ContractError(
-            "review patch base_model_sha256 does not match the deterministic raw model"
-        )
+    validate_patch_document(patch, raw_sha)
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if not isinstance(manifest, dict):
@@ -64,11 +61,12 @@ def review_semantic(request: dict[str, Any]) -> dict[str, Any]:
     operation_audit: list[dict[str, Any]] = []
     unresolved_assumptions: list[str] = []
     for index, operation in enumerate(patch["operations"]):
-        _validate_operation(operation, index, raw_sha)
         before = _pointer_get(reviewed, operation["path"], missing_ok=True)
         _apply_operation(reviewed, operation)
         after = _pointer_get(reviewed, operation["path"], missing_ok=True)
-        logic_change = _is_logic_change(operation["path"])
+        logic_change = _is_logic_change(operation["path"]) or _resolves_translation_issue(
+            before, after
+        )
         assumptions = [str(item) for item in operation.get("assumptions", [])]
         confidence = str(operation["confidence"])
         evidence_types = _evidence_types(operation["evidence"])
@@ -168,6 +166,21 @@ def review_semantic(request: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+def validate_patch_document(patch: dict[str, Any], raw_sha: str) -> None:
+    """Validate a complete audited patch before it is persisted or applied."""
+    if patch.get("patch_version") != PATCH_VERSION:
+        raise ContractError(f"review patch_version must be {PATCH_VERSION}")
+    if patch.get("base_model_sha256") != raw_sha:
+        raise ContractError(
+            "review patch base_model_sha256 does not match the deterministic raw model"
+        )
+    operations = patch.get("operations")
+    if not isinstance(operations, list):
+        raise ContractError("review patch operations must be an array")
+    for index, operation in enumerate(operations):
+        _validate_operation(operation, index, raw_sha)
+
+
 def _load_patch(path: Path) -> dict[str, Any]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -206,6 +219,19 @@ def _validate_operation(operation: Any, index: int, raw_sha: str) -> None:
         raise ContractError(f"review operation {index} requires rationale")
     if not isinstance(operation.get("evidence"), list) or not operation["evidence"]:
         raise ContractError(f"review operation {index} requires evidence")
+    for evidence_index, evidence in enumerate(operation["evidence"]):
+        if not isinstance(evidence, dict):
+            raise ContractError(
+                f"review operation {index} evidence {evidence_index} must be an object"
+            )
+        if not isinstance(evidence.get("type"), str) or not evidence["type"].strip():
+            raise ContractError(
+                f"review operation {index} evidence {evidence_index} requires type"
+            )
+        if not isinstance(evidence.get("reference"), str) or not evidence["reference"].strip():
+            raise ContractError(
+                f"review operation {index} evidence {evidence_index} requires reference"
+            )
     if operation.get("confidence") not in _CONFIDENCE:
         raise ContractError(f"review operation {index} confidence is invalid")
     if not isinstance(operation.get("assumptions"), list):
@@ -314,6 +340,38 @@ def _evidence_types(values: list[Any]) -> set[str]:
         if isinstance(value, dict) and isinstance(value.get("type"), str):
             result.add(value["type"])
     return result
+
+
+def _resolves_translation_issue(before: Any, after: Any) -> bool:
+    unresolved = {
+        "equivalent-with-assumptions",
+        "partial",
+        "unsupported",
+        "requires-human-review",
+    }
+
+    def statuses(value: Any) -> list[str]:
+        found: list[str] = []
+        if isinstance(value, dict):
+            status = value.get("translation_status")
+            if isinstance(status, str):
+                found.append(status)
+            for child in value.values():
+                found.extend(statuses(child))
+        elif isinstance(value, list):
+            for child in value:
+                found.extend(statuses(child))
+        elif isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+            except json.JSONDecodeError:
+                return found
+            found.extend(statuses(parsed))
+        return found
+
+    before_unresolved = sum(status in unresolved for status in statuses(before))
+    after_unresolved = sum(status in unresolved for status in statuses(after))
+    return before_unresolved > after_unresolved
 
 
 def _manifest_for_raw(raw_path: Path) -> Path:

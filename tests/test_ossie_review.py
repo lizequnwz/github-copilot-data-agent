@@ -10,7 +10,7 @@ from unittest.mock import patch
 from data_agent.io import ContractError
 from data_agent.semantic.conversion import convert_semantic
 from data_agent.semantic.ossie import official_validation_errors, validate_osi_document
-from data_agent.semantic.review import review_semantic
+from data_agent.semantic.review import _resolves_translation_issue, review_semantic
 from data_agent.semantic.verification import verify_semantic_model
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -74,6 +74,29 @@ class SemanticReviewTests(unittest.TestCase):
                 "output_dir": directory,
             }
         )
+
+    def test_translation_resolution_is_a_semantic_logic_change(self) -> None:
+        before = [
+            {
+                "name": "COMMON",
+                "data": json.dumps(
+                    {
+                        "kind": "source_metadata",
+                        "translation_status": "requires-human-review",
+                    }
+                ),
+            }
+        ]
+        after = [
+            {
+                "name": "COMMON",
+                "data": json.dumps(
+                    {"kind": "source_metadata", "translation_status": "exact"}
+                ),
+            }
+        ]
+        self.assertTrue(_resolves_translation_issue(before, after))
+        self.assertFalse(_resolves_translation_issue(after, after))
 
     def test_empty_audited_review_is_clean_and_offline(self) -> None:
         with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:

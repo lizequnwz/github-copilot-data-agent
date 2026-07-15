@@ -1,0 +1,263 @@
+from __future__ import annotations
+
+import http.client
+import json
+import tempfile
+import threading
+import unittest
+from http.server import ThreadingHTTPServer
+from pathlib import Path
+from unittest.mock import patch
+
+from data_agent.io import ContractError
+from data_agent.semantic.conversion import convert_semantic
+from data_agent.semantic.review_workspace import (
+    ReviewApplication,
+    MAX_REQUEST_BYTES,
+    _handler_for,
+    compile_decisions,
+    default_decisions,
+    render_review_html,
+    review_paths,
+    save_draft,
+    validate_decisions,
+)
+
+ROOT = Path(__file__).resolve().parents[1]
+FIXTURE = ROOT / "tests/fixtures/generic/sales.yaml"
+
+
+class ReviewWorkspaceTests(unittest.TestCase):
+    def _build(self, directory: str) -> tuple[dict[str, object], object]:
+        built = convert_semantic(
+            {
+                "request_id": "workspace-test",
+                "source_path": str(FIXTURE),
+                "model_name": "workspace_sales",
+                "output_dir": directory,
+            }
+        )
+        return built, review_paths(built["raw_model_path"], built["manifest_path"])
+
+    def test_decisions_require_current_hash_evidence_and_known_keys(self) -> None:
+        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+            _, paths = self._build(directory)
+            decisions = default_decisions(paths.raw)
+            decisions["unknown"] = True
+            with self.assertRaisesRegex(ContractError, "unknown review decision keys"):
+                validate_decisions(decisions, paths.raw)
+
+            decisions = default_decisions(paths.raw)
+            decisions["base_model_sha256"] = "0" * 64
+            with self.assertRaisesRegex(ContractError, "stale"):
+                validate_decisions(decisions, paths.raw)
+
+            decisions = default_decisions(paths.raw)
+            decisions["operations"] = [
+                {
+                    "op": "replace",
+                    "path": "/version",
+                    "value": "9.9",
+                    "rationale": "Change the protected version.",
+                    "evidence": [{"type": "official_spec", "reference": "test"}],
+                    "confidence": "high",
+                    "assumptions": [],
+                }
+            ]
+            with self.assertRaisesRegex(ContractError, "Ossie version"):
+                validate_decisions(decisions, paths.raw)
+
+            decisions = default_decisions(paths.raw)
+            decisions["operations"] = [
+                {
+                    "op": "replace",
+                    "path": "/semantic_model/0/description",
+                    "value": "Reviewed model.",
+                    "rationale": "Clarify the model.",
+                    "evidence": [{}],
+                    "confidence": "high",
+                    "assumptions": [],
+                }
+            ]
+            with self.assertRaisesRegex(ContractError, "evidence 0 requires type"):
+                validate_decisions(decisions, paths.raw)
+
+    def test_field_rename_compiles_coordinated_primary_key_update(self) -> None:
+        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+            _, paths = self._build(directory)
+            decisions = default_decisions(paths.raw)
+            decisions["operations"] = [
+                {
+                    "op": "replace",
+                    "path": "/semantic_model/0/datasets/0/fields/0/name",
+                    "value": "order_identifier",
+                    "intent": "rename",
+                    "rationale": "Use the approved business-facing field name.",
+                    "evidence": [{"type": "user", "reference": "Data owner approval"}],
+                    "confidence": "high",
+                    "assumptions": [],
+                }
+            ]
+            patch = compile_decisions(decisions, paths)
+            paths_by_operation = {item["path"]: item for item in patch["operations"]}
+            self.assertEqual(
+                paths_by_operation["/semantic_model/0/datasets/0/primary_key"]["value"],
+                ["order_identifier"],
+            )
+            self.assertNotIn("intent", patch["operations"][0])
+            self.assertTrue(paths.decisions.is_file())
+            self.assertTrue(paths.patch.is_file())
+
+    def test_dataset_rename_requires_explicit_expression_correction(self) -> None:
+        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+            _, paths = self._build(directory)
+            decisions = default_decisions(paths.raw)
+            decisions["operations"] = [
+                {
+                    "op": "replace",
+                    "path": "/semantic_model/0/datasets/0/name",
+                    "value": "booked_orders",
+                    "intent": "rename",
+                    "rationale": "Use the approved dataset name.",
+                    "evidence": [{"type": "user", "reference": "Data owner approval"}],
+                    "confidence": "high",
+                    "assumptions": [],
+                }
+            ]
+            with self.assertRaisesRegex(ContractError, "expression .* references"):
+                compile_decisions(decisions, paths)
+
+    def test_apply_generates_audit_and_promotes_only_after_confirmation(self) -> None:
+        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+            _, paths = self._build(directory)
+            decisions = default_decisions(paths.raw)
+            app = ReviewApplication(
+                paths,
+                request_id="workspace",
+                verify_snowflake=False,
+                config_path="snowflake_config.yaml",
+                configuration_confirmed=False,
+                promote_if_clean=True,
+            )
+            with self.assertRaisesRegex(ContractError, "confirm the promotion destination"):
+                app.apply({"decisions": decisions, "confirm_promote": False})
+            promotion_root = Path(directory) / "promotion-root"
+            with patch("data_agent.semantic.review.ROOT", promotion_root):
+                applied = app.apply({"decisions": decisions, "confirm_promote": True})
+            self.assertTrue(applied["result"]["clean"])
+            self.assertTrue(applied["result"]["promoted"])
+            self.assertTrue(paths.decisions.is_file())
+            self.assertTrue(paths.patch.is_file())
+            self.assertTrue(paths.html.is_file())
+
+    def test_draft_and_static_workspace_are_accessible_and_non_mutating(self) -> None:
+        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+            built, paths = self._build(directory)
+            raw_before = Path(str(built["raw_model_path"])).read_bytes()
+            decisions = default_decisions(paths.raw)
+            save_draft(decisions, paths)
+            self.assertEqual(Path(str(built["raw_model_path"])).read_bytes(), raw_before)
+            state = ReviewApplication(
+                paths,
+                request_id="workspace",
+                verify_snowflake=False,
+                config_path="snowflake_config.yaml",
+                configuration_confirmed=False,
+                promote_if_clean=False,
+            ).state()
+            document = render_review_html(state)
+            for expected in (
+                "Skip to review workspace",
+                "aria-live=\"polite\"",
+                "prefers-reduced-motion",
+                "prefers-color-scheme:dark",
+                "Apply and validate",
+                "Download decisions",
+            ):
+                self.assertIn(expected, document)
+            self.assertNotIn("https://", document)
+
+    def test_loopback_server_rejects_bad_token_and_origin_and_saves_draft(self) -> None:
+        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+            _, paths = self._build(directory)
+            app = ReviewApplication(
+                paths,
+                request_id="workspace",
+                verify_snowflake=False,
+                config_path="snowflake_config.yaml",
+                configuration_confirmed=False,
+                promote_if_clean=False,
+            )
+            try:
+                server = ThreadingHTTPServer(("127.0.0.1", 0), _handler_for(app))
+            except PermissionError:
+                self.skipTest("loopback sockets are unavailable in this sandbox")
+            port = int(server.server_address[1])
+            app.origin = f"http://127.0.0.1:{port}"
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+            try:
+                connection.putrequest("POST", "/api/draft")
+                connection.putheader("Content-Type", "application/json")
+                connection.putheader("Content-Length", str(MAX_REQUEST_BYTES + 1))
+                connection.putheader("Origin", app.origin)
+                connection.putheader("X-Review-Token", app.token)
+                connection.endheaders()
+                oversized = connection.getresponse()
+                self.assertEqual(oversized.status, 400)
+                oversized.read()
+
+                connection.request(
+                    "POST",
+                    "/api/draft",
+                    body=json.dumps({"decisions": default_decisions(paths.raw)}),
+                    headers={"Content-Type": "application/json", "Origin": app.origin},
+                )
+                self.assertEqual(connection.getresponse().status, 403)
+
+                connection.request(
+                    "POST",
+                    "/api/draft",
+                    body=json.dumps({"decisions": default_decisions(paths.raw)}),
+                    headers={
+                        "Content-Type": "application/json",
+                        "Origin": "http://localhost:9999",
+                        "X-Review-Token": app.token,
+                    },
+                )
+                self.assertEqual(connection.getresponse().status, 403)
+
+                connection.request(
+                    "POST",
+                    "/api/draft",
+                    body=json.dumps({"decisions": default_decisions(paths.raw)}),
+                    headers={
+                        "Content-Type": "application/json",
+                        "Origin": app.origin,
+                        "X-Review-Token": app.token,
+                    },
+                )
+                self.assertEqual(connection.getresponse().status, 200)
+                self.assertTrue(paths.draft.is_file())
+
+                connection.request(
+                    "POST",
+                    "/api/finish",
+                    body="{}",
+                    headers={
+                        "Content-Type": "application/json",
+                        "Origin": app.origin,
+                        "X-Review-Token": app.token,
+                    },
+                )
+                self.assertEqual(connection.getresponse().status, 200)
+            finally:
+                connection.close()
+                thread.join(timeout=5)
+                server.server_close()
+            self.assertTrue(app.finished.is_set())
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,6 +1,7 @@
 ---
 name: snowflake-analysis
 description: Set up this repository's local Snowflake connection and answer scoped data questions with semantic models, validated read-only SQL, bounded execution, and result checks. Use for environment setup, metadata discovery, query planning, Snowflake analysis, or interpreting query results.
+allowed-tools: ["read", "search", "edit", "execute"]
 ---
 
 # Snowflake analysis
@@ -38,4 +39,3 @@ Lead with the direct answer. Then include the metric definition, filters, period
 query ID, role, SQL, and meaningful caveats. Create a chart or HTML report only when requested.
 
 Never weaken read-only checks, bypass failed SSO, or invent a metric definition to continue.
-

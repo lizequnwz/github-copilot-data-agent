@@ -83,32 +83,34 @@ before the first connection and uses browser SSO.
 
 ## Build an OSI model from BI metadata
 
-The `osi-semantic-model-builder` skill is the model onboarding path. Its bundled command first
-creates a deterministic raw model using the pinned official schema and validator. The agent then
-creates an audited review patch, which Python applies and validates before producing or promoting
-the final model.
+The `osi-semantic-model-builder` skill is the model onboarding path. Its normal command creates a
+deterministic raw model and opens a local review workspace. Business users and analysts can edit
+meaning, mappings, keys, relationships, expressions, descriptions, synonyms, examples, and
+`ai_context` without editing YAML. **Apply and validate** compiles their decisions into an audited
+patch, reruns the pinned official validator, and promotes only a clean model after confirmation.
 
 ```bash
 # Power BI TMDL
 uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py \
-  tests/fixtures/powerbi --model-name demo_powerbi
+  tests/fixtures/powerbi --model-name demo_powerbi --review-ui
 
 # Tableau .tds datasource (the normal Tableau semantic input)
 uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py \
   examples/tableau/world.tds --model-name world_indicators \
   --source-map examples/tableau/world-source-map.demo.json \
-  --field-map examples/tableau/world-field-map.example.json
+  --field-map examples/tableau/world-field-map.example.json --review-ui
 
 # Generic semantic YAML
 uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py \
-  tests/fixtures/generic/sales.yaml --model-name demo_generic
+  tests/fixtures/generic/sales.yaml --model-name demo_generic --review-ui
 ```
 
-Each first-stage command writes `semantic/generated/<model>.raw.osi.yaml` and
-`semantic/generated/<model>.conversion.json`. After review, rerun it with
-`--review-patch semantic/generated/<model>.review.patch.json`. Clean results produce
-`semantic/generated/<model>.osi.yaml` and promote to `semantic/models/<model>.yaml`. Snowflake
-verification is optional through `--verify-snowflake`. See
+The temporary server binds only to `127.0.0.1`; use `--no-open` for a headless launch. Draft,
+decisions, audited patch, final model, review HTML, and manifest artifacts stay under
+`semantic/generated/`. The static HTML can download decisions for later use with
+`--review-decisions PATH`. Manual `--review-patch` remains an advanced audit/debugging path.
+Snowflake verification is optional through `--verify-snowflake` after configuration confirmation.
+See
 [Semantic models](docs/SEMANTIC_MODELS.md) for the complete process.
 
 ## Project map

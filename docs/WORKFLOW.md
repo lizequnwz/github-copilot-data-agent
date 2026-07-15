@@ -78,6 +78,15 @@ changes.
 
 ## Bring a semantic model from BI
 
+Semantic-layer creation and refresh use the browser review workspace by default. Responsibilities
+are deliberately split:
+
+- Business users define business meaning, inclusions/exclusions, synonyms, and the questions the
+  model must answer.
+- Analysts confirm physical mappings, keys, relationship direction, grain, and expressions.
+- The agent generates deterministic artifacts, compiles audited decisions, validates Ossie, and
+  promotes only an eligible result.
+
 Example prompts:
 
 > Convert this unpacked Power BI TMDL directory into an OSI model and show me what needs review.
@@ -89,10 +98,34 @@ Example prompts:
 > Refresh the generated model from this updated BI export and compare the manifest with the last
 > conversion.
 
-The `osi-semantic-model-builder` first writes a deterministic raw OSI file and conversion manifest
-to `semantic/generated/`. Review those artifacts, create the audited JSON patch described by the
-skill, and rerun the builder with `--review-patch`. Python applies and validates the patch; clean
-models are promoted automatically to `semantic/models/`.
+> Review the generated semantics with me. Lead with blocking decisions, preserve source evidence,
+> and open the browser workspace so I can approve or correct each change.
+
+> Help me resolve the remaining assumptions. Ask for one material business decision at a time and
+> record my answer as user evidence.
+
+> Apply my saved decisions, show the before/after audit, and promote only if validation is clean.
+
+> Verify the reviewed model against Snowflake metadata after showing me the non-secret connection
+> context for confirmation.
+
+Launch the normal workflow with:
+
+```bash
+uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py SOURCE \
+  --model-name MODEL --review-ui
+```
+
+The builder writes a deterministic raw OSI file and manifest, starts a temporary loopback-only
+server, and opens the review workspace. Start with blocking issues, search an object section,
+review one focused editor, and provide rationale, evidence, confidence, and assumptions for every
+change. Drafts auto-save without changing OSI. **Apply and validate** compiles the complete
+decisions file and audited patch against the original raw hash, applies it deterministically,
+reruns validation, and confirms the destination before a clean promotion.
+
+If a browser cannot be opened, add `--no-open` and use the printed URL. The generated static review
+HTML is a fallback that downloads decisions JSON. Apply that file later with
+`--review-decisions PATH`. Direct `--review-patch` editing is reserved for audit and debugging.
 
 ### Normal Tableau path: `.tds`
 
@@ -104,7 +137,7 @@ conversion. Use `examples/tableau/world.tds` and its mapping files as the workin
 uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py \
   examples/tableau/world.tds --model-name world_indicators \
   --source-map examples/tableau/world-source-map.demo.json \
-  --field-map examples/tableau/world-field-map.example.json
+  --field-map examples/tableau/world-field-map.example.json --review-ui
 ```
 
 For a real datasource:
@@ -113,12 +146,11 @@ For a real datasource:
    `DATABASE.SCHEMA.TABLE_OR_VIEW`.
 2. Create or adapt a field map when Tableau display names do not match simple unquoted Snowflake
    column aliases.
-3. Run the builder and open `<model>.conversion.json` and `<model>.raw.osi.yaml` first.
+3. Run the builder with `--review-ui`; use the manifest and raw YAML for technical traceability.
 4. Resolve physical-source blockers, then review keys, relationships, important fields, metric
-   expressions, descriptions, and `ai_context`.
-5. Write `<model>.review.patch.json` with evidence, confidence, and assumptions for each change.
-6. Rerun with `--review-patch PATH`. The reviewed `<model>.osi.yaml` is promoted only when official
-   and readiness validation pass with no unresolved assumptions.
+   expressions, descriptions, synonyms, examples, and `ai_context` in the workspace.
+5. Select **Apply and validate**. Confirm the proposed `semantic/models/` destination; promotion
+   occurs only when official and readiness validation pass with no unresolved assumptions.
 
 Snowflake evidence is optional. When requested, confirm the displayed non-secret context first and
 add `--verify-snowflake --configuration-confirmed`; failed or partial verification prevents

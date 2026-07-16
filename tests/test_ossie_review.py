@@ -10,7 +10,7 @@ from unittest.mock import patch
 from data_agent.io import ContractError
 from data_agent.semantic.conversion import convert_semantic
 from data_agent.semantic.ossie import official_validation_errors, validate_osi_document
-from data_agent.semantic.review import _resolves_translation_issue, review_semantic
+from data_agent.semantic.review import _resolves_translation_issue, review_semantic, sha256_text
 from data_agent.semantic.verification import verify_semantic_model
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -95,6 +95,84 @@ class SemanticReviewTests(unittest.TestCase):
         ]
         self.assertTrue(_resolves_translation_issue(before, after))
         self.assertFalse(_resolves_translation_issue(after, after))
+
+    def test_reviewed_unsupported_disposition_is_promotion_ready(self) -> None:
+        document = _document()
+        model = document["semantic_model"][0]
+        model["custom_extensions"] = [
+            {
+                "vendor_name": "COMMON",
+                "data": json.dumps(
+                    {
+                        "kind": "conversion_provenance",
+                        "unsupported": [{"field": "Orders.Margin", "construct": "DAX"}],
+                    },
+                    sort_keys=True,
+                ),
+            },
+            {
+                "vendor_name": "COMMON",
+                "data": json.dumps(
+                    {
+                        "kind": "unsupported_review",
+                        "source_expression": "One DAX calculation was excluded.",
+                        "translation_status": "requires-human-review",
+                    },
+                    sort_keys=True,
+                ),
+            },
+        ]
+        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+            raw_path = Path(directory) / "reviewed_unsupported.raw.osi.yaml"
+            raw_text = json.dumps(document)
+            raw_path.write_text(raw_text)
+            raw_sha = sha256_text(raw_text)
+            manifest_path = Path(directory) / "reviewed_unsupported.conversion.json"
+            manifest_path.write_text(
+                json.dumps({"osi": {"raw_model_sha256": raw_sha}, "issues": []})
+            )
+            reviewed_extension = dict(model["custom_extensions"][1])
+            reviewed_data = json.loads(reviewed_extension["data"])
+            reviewed_data["translation_status"] = "reviewed-unsupported"
+            reviewed_extension["data"] = json.dumps(reviewed_data, sort_keys=True)
+            patch_path = Path(directory) / "reviewed_unsupported.review.patch.json"
+            patch_path.write_text(
+                json.dumps(
+                    {
+                        "patch_version": "1.0",
+                        "base_model_sha256": raw_sha,
+                        "operations": [
+                            {
+                                "base_model_sha256": raw_sha,
+                                "op": "replace",
+                                "path": "/semantic_model/0/custom_extensions/1",
+                                "value": reviewed_extension,
+                                "rationale": "The owner accepted exclusion of the unsupported DAX.",
+                                "evidence": [
+                                    {"type": "user", "reference": "Definition owner decision"}
+                                ],
+                                "confidence": "high",
+                                "assumptions": [],
+                            }
+                        ],
+                    }
+                )
+            )
+            promotion_root = Path(directory) / "promotion-root"
+            with patch("data_agent.semantic.review.ROOT", promotion_root):
+                result = review_semantic(
+                    {
+                        "request_id": "reviewed-unsupported",
+                        "raw_model_path": str(raw_path),
+                        "manifest_path": str(manifest_path),
+                        "patch_path": str(patch_path),
+                        "promote_if_clean": True,
+                    }
+                )
+
+        self.assertTrue(result["analysis_ready"])
+        self.assertTrue(result["clean"])
+        self.assertTrue(result["promoted"])
 
     def test_empty_audited_review_is_clean_and_offline(self) -> None:
         with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:

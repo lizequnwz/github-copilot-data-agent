@@ -9,6 +9,7 @@ automation.
 Run the offline walkthrough before connecting to Snowflake:
 
 ```bash
+git submodule update --init --recursive
 uv sync --extra dev
 uv run python scripts/demo_analysis.py
 ```
@@ -76,7 +77,9 @@ Requested output
 The structured plan supports explicit filters, an inclusive-start/exclusive-end `time_range`, and
 `order_by` on selected dimensions or metrics. The response preserves qualified semantic `grain`
 and separately reports returned-column `result_grain`, `result_columns`, `max_rows`, and the
-extra-row `query_limit` used to detect truncation.
+extra-row `query_limit` used to detect truncation. Snowflake normally returns unquoted aliases in
+uppercase even when the generated SQL uses lowercase identifiers; result checks therefore match
+column names case-insensitively and preserve the returned names for query evidence.
 
 For a live query, expect:
 
@@ -124,6 +127,12 @@ Normal controls cover descriptions, synonyms, example questions, AI instructions
 relationships, expressions, and translation decisions. `custom_extensions` and raw JSON Pointer
 editing remain advanced-only. Selected translations with the same status can share one reviewed
 decision while still producing one audited operation per object.
+
+Dataset keys and relationship columns are physical source-column identifiers. They are derived
+from simple field expressions and remain unchanged when a semantic field is renamed. Selecting
+**Retain as reviewed unsupported** preserves the unsupported source construct in immutable
+conversion provenance, keeps it out of executable OSI, and clears its promotion blocker after the
+audited decision is applied.
 
 Example prompts:
 

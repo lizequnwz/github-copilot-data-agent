@@ -219,6 +219,7 @@ def _dialects(item: dict[str, Any]) -> dict[str, str]:
 
 
 def _check_extensions(item: dict[str, Any], element: str, issues: list[dict[str, str]]) -> None:
+    parsed_extensions: list[dict[str, Any]] = []
     for extension in item.get("custom_extensions", []):
         if not isinstance(extension, dict):
             continue
@@ -239,7 +240,19 @@ def _check_extensions(item: dict[str, Any], element: str, issues: list[dict[str,
             continue
         if not isinstance(parsed, dict):
             continue
-        if parsed.get("kind") == "conversion_provenance" and parsed.get("unsupported"):
+        parsed_extensions.append(parsed)
+
+    unsupported_reviewed = any(
+        parsed.get("kind") == "unsupported_review"
+        and parsed.get("translation_status") == "reviewed-unsupported"
+        for parsed in parsed_extensions
+    )
+    for parsed in parsed_extensions:
+        if (
+            parsed.get("kind") == "conversion_provenance"
+            and parsed.get("unsupported")
+            and not unsupported_reviewed
+        ):
             issues.append(
                 _issue(
                     "review",
@@ -248,7 +261,9 @@ def _check_extensions(item: dict[str, Any], element: str, issues: list[dict[str,
                     "The source contains constructs that are preserved but not translated.",
                 )
             )
-        if parsed.get("kind") == "source_metadata" and parsed.get("translation_status") in {
+        if parsed.get("kind") in {"source_metadata", "unsupported_review"} and parsed.get(
+            "translation_status"
+        ) in {
             "equivalent-with-assumptions",
             "partial",
             "unsupported",

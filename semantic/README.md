@@ -2,7 +2,8 @@
 
 - `models/` contains OSI models available to the analysis agent.
 - `generated/` contains replaceable model and manifest pairs created from BI exports.
-- `schemas/` contains the vendored Apache Ossie schema used for offline validation.
+- `schemas/` documents the authoritative schema location. The schema itself comes from the pinned
+  `ossie-main/` Apache Ossie Git submodule; this directory does not contain a duplicate.
 
 Use the `osi-semantic-model-builder` skill or run:
 

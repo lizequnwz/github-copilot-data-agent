@@ -13,6 +13,7 @@ TRANSLATION_STATES = {
     "equivalent-with-assumptions",
     "partial",
     "unsupported",
+    "reviewed-unsupported",
     "requires-human-review",
 }
 
@@ -365,12 +366,27 @@ def build_osi_from_ir(
         "ir_version": ir.get("ir_version"),
         "unsupported": ir.get("unsupported", []),
     }
+    model_extensions = [_extension(extension)]
+    unsupported_items = ir.get("unsupported", [])
+    if isinstance(unsupported_items, list) and unsupported_items:
+        model_extensions.append(
+            _extension(
+                {
+                    "kind": "unsupported_review",
+                    "source_expression": (
+                        f"{len(unsupported_items)} unsupported source construct(s) are preserved "
+                        "in immutable conversion provenance and excluded from executable OSI."
+                    ),
+                    "translation_status": "requires-human-review",
+                }
+            )
+        )
     semantic_model: dict[str, Any] = {
         "name": name,
         "datasets": datasets,
         "relationships": relationships,
         "metrics": metrics,
-        "custom_extensions": [_extension(extension)],
+        "custom_extensions": model_extensions,
     }
     if ir.get("description"):
         semantic_model["description"] = str(ir["description"])

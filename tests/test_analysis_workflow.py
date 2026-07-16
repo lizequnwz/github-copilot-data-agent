@@ -43,6 +43,28 @@ class AnalysisContractTests(unittest.TestCase):
             response["sql"],
         )
 
+    def test_live_snowflake_uppercase_columns_match_semantic_aliases(self) -> None:
+        request = json.loads((ROOT / "examples/analysis/sales-by-region.json").read_text())
+        request.update(
+            {
+                "execute": True,
+                "configuration_confirmed": True,
+                "config_path": "snowflake_config.yaml",
+            }
+        )
+        connection = _AnalysisConnection()
+        settings = _settings()
+        with (
+            patch("data_agent.analysis.load_settings", return_value=settings),
+            patch("data_agent.tools.snowflake.load_settings", return_value=settings),
+            patch("data_agent.tools.snowflake._connect", return_value=connection),
+        ):
+            response = analyze(request)
+
+        self.assertEqual(response["status"], "success")
+        self.assertEqual(response["result"]["columns"], ["REGION", "GROSS_SALES"])
+        self.assertEqual(response["result_validation"]["status"], "pass")
+
     def test_projection_collisions_receive_deterministic_aliases(self) -> None:
         document = {
             "semantic_model": [
@@ -115,22 +137,7 @@ class AnalysisContractTests(unittest.TestCase):
 
 class RowLimitTests(unittest.TestCase):
     def test_exact_limit_is_not_truncated_and_extra_row_is_truncated(self) -> None:
-        settings = Settings(
-            account="account",
-            user="user",
-            authenticator="externalbrowser",
-            role="READONLY",
-            warehouse="WH",
-            database="DEMO",
-            schema="ANALYTICS",
-            query_tag="test",
-            max_rows=10,
-            max_bytes=100_000,
-            timeout_seconds=10,
-            blocked_schemas=(),
-            allowed_objects=(),
-            allow_sensitive_sampling=False,
-        )
+        settings = _settings()
         for returned_rows, expected in ((10, False), (11, True)):
             with self.subTest(returned_rows=returned_rows):
                 connection = _Connection(returned_rows)
@@ -198,6 +205,50 @@ class _Connection:
 
     def cursor(self) -> _Cursor:
         return self._cursor
+
+
+class _AnalysisCursor:
+    description = [("REGION",), ("GROSS_SALES",)]
+    sfqid = "analysis-query-id"
+
+    def execute(self, sql: str, parameters: Any = None) -> None:
+        return None
+
+    def fetchmany(self, count: int) -> list[tuple[str, int]]:
+        return [("East", 120), ("West", 80)]
+
+    def close(self) -> None:
+        return None
+
+
+class _AnalysisConnection:
+    def __enter__(self) -> _AnalysisConnection:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+    def cursor(self) -> _AnalysisCursor:
+        return _AnalysisCursor()
+
+
+def _settings() -> Settings:
+    return Settings(
+        account="account",
+        user="user",
+        authenticator="externalbrowser",
+        role="READONLY",
+        warehouse="WH",
+        database="DEMO",
+        schema="ANALYTICS",
+        query_tag="test",
+        max_rows=10,
+        max_bytes=100_000,
+        timeout_seconds=10,
+        blocked_schemas=(),
+        allowed_objects=(),
+        allow_sensitive_sampling=False,
+    )
 
 
 if __name__ == "__main__":

@@ -82,6 +82,7 @@ def _translation_counts(ir: dict[str, Any] | None) -> dict[str, int]:
         "equivalent-with-assumptions",
         "partial",
         "unsupported",
+        "reviewed-unsupported",
         "requires-human-review",
     )
     counts = {state: 0 for state in states}

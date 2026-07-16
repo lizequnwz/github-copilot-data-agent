@@ -52,8 +52,10 @@ Direct `SUM`, `AVERAGE`/`AVG`, `MIN`, `MAX`, `COUNT`, and distinct-count express
 translated. Complex DAX, Power Query transformations, Tableau LOD expressions, table
 calculations, roles, parameters, and filters are preserved or reported for review.
 
-Translation states are `exact`, `equivalent-with-assumptions`, `partial`, `unsupported`, and
-`requires-human-review`.
+Translation states are `exact`, `equivalent-with-assumptions`, `partial`, `unsupported`,
+`reviewed-unsupported`, and `requires-human-review`. `reviewed-unsupported` records an audited
+decision to preserve the source construct in immutable provenance while keeping it out of
+executable OSI; unlike an unreviewed `unsupported` state, it does not block promotion.
 
 ## Examples
 
@@ -94,6 +96,8 @@ added, removed, and changed items with `breaking`, `semantic`, or `metadata` imp
 The workspace is issue-first and offers Business and Analyst views across datasets, fields,
 metrics, relationships, and AI context. Guided editors cover descriptions, synonyms, examples,
 instructions, sources, keys, relationships, dialect expressions, and translation decisions.
+Key and relationship selectors show physical source columns derived from field expressions and
+preserve existing physical references; semantic field names are reviewed separately.
 Selected translations with the same status may share one reviewed decision while emitting one
 audited operation per object. The advanced JSON operation editor remains available for uncommon
 OSI constructs. Every change requires rationale, evidence, confidence, and explicit assumptions.

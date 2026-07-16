@@ -137,6 +137,9 @@ Snowflake verification is optional through `--verify-snowflake` after configurat
 The workspace provides Business and Analyst views, structured context and expression editors,
 translation decisions, relationship/key controls, and selected bulk translation review. A matching
 `semantic/tests/<model>.yaml` competency fixture runs before a clean model can promote.
+Key and relationship controls use physical source columns. Unsupported source constructs remain
+excluded from executable OSI; an explicit **reviewed unsupported** decision preserves their
+provenance while allowing the reviewed model to become promotion-ready.
 See
 [Semantic models](docs/SEMANTIC_MODELS.md) for the complete process.
 

@@ -57,4 +57,6 @@ Neutral IR requires `ir_version` and `datasets`. Existing Ossie requires `versio
 - `equivalent-with-assumptions`: usable mapping with a recorded assumption.
 - `partial`: only part of the source behavior is represented.
 - `unsupported`: preserved but not emitted as an executable core expression.
+- `reviewed-unsupported`: explicitly reviewed, still preserved and excluded from executable OSI,
+  but no longer a promotion blocker.
 - `requires-human-review`: evidence is insufficient for a usable expression.

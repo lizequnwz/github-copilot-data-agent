@@ -37,6 +37,17 @@ class ReportingTests(unittest.TestCase):
                     "output_path": str(output),
                     "validation": {"status": "pass"},
                     "summary": "East leads West in the fixture.",
+                    "question": "Which region leads sales?",
+                    "interpretation": {
+                        "metric": "Sales",
+                        "population": "All fixture orders",
+                        "expected_result_grain": "One row per region",
+                    },
+                    "validation_summary": {
+                        "semantic_grain": "orders.region",
+                        "result_grain": "region",
+                        "truncated": "No",
+                    },
                     "columns": ["region", "sales"],
                     "rows": [["East", 120], ["West", 90]],
                     "column_formats": {
@@ -50,11 +61,17 @@ class ReportingTests(unittest.TestCase):
                     "definitions": {"sales": "Fixture sales amount"},
                     "methodology": "Aggregate sales by region.",
                     "caveats": ["Synthetic data"],
+                    "plan": {
+                        "semantic_model": "demo_sales",
+                        "metric_ids": ["gross_sales"],
+                        "dimensions": ["orders.region"],
+                    },
                     "metadata": {
                         "title": "Sales report",
                         "semantic_model": "demo_sales",
                         "data_freshness": "2026-07-11",
                         "period": "Last complete month",
+                        "truncated": False,
                         "generated_at": "2026-07-15T12:00:00+00:00",
                         "query_id": "offline-fixture",
                         "role": "offline",
@@ -69,6 +86,11 @@ class ReportingTests(unittest.TestCase):
             self.assertIn("$120", document)
             self.assertIn("Period: Last complete month", document)
             self.assertIn("Generated: 2026-07-15T12:00:00+00:00", document)
+            self.assertIn("Resolved question", document)
+            self.assertIn("Execution contract", document)
+            self.assertIn("Which region leads sales?", document)
+            self.assertIn("Show normalized semantic plan", document)
+            self.assertIn("Complete result", document)
             self.assertNotIn('fill="#ffffff"', chart["svg"])
 
 

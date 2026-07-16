@@ -28,8 +28,18 @@ def main() -> int:
             "request_id": "offline-sales-chart",
             "spec": {
                 "type": "bar",
-                "title": "Gross sales by region",
-                "unit": "USD",
+                "title": "Completed-order gross sales by region",
+                "unit": "USD, May–June 2026",
+                "alt_text": (
+                    "Completed-order gross sales by region for May and June 2026. "
+                    "East leads at $128,000, followed by West at $104,500 and Central at $87,250."
+                ),
+                "value_format": {
+                    "style": "currency",
+                    "currency": "USD",
+                    "decimals": 0,
+                    "compact": True,
+                },
                 "data": [{"label": row[region_index], "value": row[sales_index]} for row in rows],
             },
         }
@@ -40,18 +50,61 @@ def main() -> int:
             "output_path": str(ROOT / "reports/generated/demo-sales-analysis.html"),
             "validation": analysis["result_validation"],
             "summary": request["answer"],
+            "question": request["question"],
+            "interpretation": {
+                "metric": "Gross sales",
+                "population": "Completed orders only",
+                "dimensions": "Region",
+                "filters": "Order status equals completed",
+                "period": analysis["period"]["label"],
+                "expected_result_grain": "One row per region",
+                "semantic_model": analysis["model"],
+                "requested_output": "Top regions, chart, table, and compiled SQL",
+            },
+            "validation_summary": {
+                "semantic_grain": ", ".join(analysis["grain"]),
+                "result_grain": ", ".join(analysis["result_grain"]),
+                "rows_returned": len(rows),
+                "logical_cap": analysis["max_rows"],
+                "query_probe_limit": analysis["query_limit"],
+                "truncated": "No" if not result["truncated"] else "Yes",
+                "sql_validation": "Passed",
+                "result_validation": "Passed",
+            },
             "columns": ["Region", "Gross sales (USD)"],
             "rows": rows,
+            "column_formats": {
+                "Gross sales (USD)": {
+                    "style": "currency",
+                    "currency": "USD",
+                    "decimals": 0,
+                }
+            },
             "chart_svg": chart["svg"],
+            "chart_heading": "Regional contribution",
             "definitions": request["definitions"],
-            "methodology": "Compile the shared gross_sales metric at region grain.",
+            "methodology": (
+                "Resolve the shared gross_sales metric from demo_sales, filter to completed orders, "
+                "apply an inclusive 2026-05-01 and exclusive 2026-07-01 time range, group by region, "
+                "order by gross sales descending, fetch one row beyond the logical cap, then validate "
+                "the returned region grain before interpretation."
+            ),
             "caveats": request["notes"],
             "sql": analysis["sql"],
+            "plan": analysis["normalized_plan"],
             "metadata": {
-                "title": "Regional sales example",
+                "title": "Completed-order gross sales by region",
+                "analysis_mode": "Ask Data",
                 "semantic_model": analysis["model"],
                 "period": analysis["period"]["label"],
+                "semantic_grain": ", ".join(analysis["grain"]),
                 "result_grain": ", ".join(analysis["result_grain"]),
+                "rows_returned": len(rows),
+                "max_rows": analysis["max_rows"],
+                "query_limit": analysis["query_limit"],
+                "truncated": result["truncated"],
+                "query_id": "offline-synthetic-fixture",
+                "role": "offline; no Snowflake connection",
                 "data_freshness": "synthetic example",
             },
         }

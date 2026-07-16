@@ -340,7 +340,7 @@ function render(){{const scroll=Number(sessionStorage.getItem('semantic-review-s
 function filterRows(){{const q=document.getElementById('objectSearch').value.toLowerCase(),f=document.getElementById('objectFilter').value;document.querySelectorAll('.object-row').forEach(row=>row.hidden=!row.dataset.search.includes(q)||(f==='changed'&&row.dataset.changed!=='true'))}}
 function keySelect(prop,selected){{return `<select data-key-select multiple size="${{Math.min(Math.max((prop.options||[]).length,2),8)}}">${{(prop.options||[]).map(v=>`<option ${{selected.includes(v)?'selected':''}}>${{esc(v)}}</option>`).join('')}}</select>`}}
 function propertyInput(prop){{const value=shownValue(prop);let control='';if(prop.kind==='text')control=`<input data-value value="${{esc(String(value??''))}}">`;else if(prop.kind==='select')control=`<select data-value>${{(prop.options||[]).map(v=>`<option ${{v===value?'selected':''}}>${{esc(v)}}</option>`).join('')}}</select>`;else if(prop.kind==='multi_select')control=`<select data-value multiple size="${{Math.min(Math.max((prop.options||[]).length,2),8)}}">${{(prop.options||[]).map(v=>`<option ${{(value||[]).includes(v)?'selected':''}}>${{esc(v)}}</option>`).join('')}}</select>`;else if(prop.kind==='string_list')control=`<textarea data-value placeholder="One field per line">${{esc((value||[]).join('\n'))}}</textarea>`;else if(prop.kind==='key_lists')control=`<textarea data-value placeholder="One key per line; separate composite fields with commas">${{esc((value||[]).map(v=>Array.isArray(v)?v.join(', '):v).join('\n'))}}</textarea>`;else if(prop.kind==='key_selects'){{const keys=value?.length?value:[[]];control=`<div data-key-list>${{keys.map(key=>keySelect(prop,key)).join('')}}</div><button type="button" data-add-key="${{esc(prop.path)}}">Add another unique key</button>`}}else if(prop.kind==='dimension')control=`<label><input data-value type="checkbox" ${{value?.is_time?'checked':''}}> Time dimension</label>`;else if(prop.kind==='ai_context'){{const v=value||{{}};control=`<label>Instructions<textarea data-part="instructions">${{esc(v.instructions||'')}}</textarea></label><label>Synonyms<span class="helper">One per line</span><textarea data-part="synonyms">${{esc((v.synonyms||[]).join('\n'))}}</textarea></label><label>Example questions<span class="helper">One per line</span><textarea data-part="examples">${{esc((v.examples||[]).join('\n'))}}</textarea></label>`}}else if(prop.kind==='expression'){{const dialects=value?.dialects?.length?value.dialects:[{{dialect:'ANSI_SQL',expression:''}}];control=dialects.map((d,i)=>`<div class="result-grid"><label>Dialect<input data-dialect="${{i}}" value="${{esc(d.dialect||'')}}"></label><label>Expression<textarea data-expression="${{i}}">${{esc(d.expression||'')}}</textarea></label></div>`).join('')}}return `<div class="property-field" data-property data-path="${{esc(prop.path)}}"><label>${{esc(prop.label)}}<span class="helper">${{esc(prop.help)}}</span></label>${{control}}<span class="field-error" data-error="${{esc(prop.path)}}"></span></div>`}}
-function translationPanel(t){{if(!t)return '';return `<fieldset><legend>Translation decision</legend><p><strong>Status:</strong> ${{esc(t.status)}}</p><p><strong>Source expression:</strong> <span class="path">${{esc(typeof t.source_expression==='string'?t.source_expression:JSON.stringify(t.source_expression))}}</span></p><div class="status-line"><button type="button" data-translation="accepted">Accept translation</button><button type="button" data-translation="unsupported">Retain as unsupported</button><button type="button" data-translation="requested">Request evidence</button></div><p class="helper" id="translationState">Choose how this source translation should be treated. Accepting or editing it records an audited resolution.</p></fieldset>`}}
+function translationPanel(t){{if(!t)return '';const accept=t.can_accept?'<button type="button" data-translation="accepted">Accept translation</button>':'';return `<fieldset><legend>Translation decision</legend><p><strong>Status:</strong> ${{esc(t.status)}}</p><p><strong>Source expression:</strong> <span class="path">${{esc(typeof t.source_expression==='string'?t.source_expression:JSON.stringify(t.source_expression))}}</span></p><div class="status-line">${{accept}}<button type="button" data-translation="unsupported">Retain as reviewed unsupported</button><button type="button" data-translation="requested">Request evidence</button></div><p class="helper" id="translationState">Choose how this source translation should be treated. A reviewed-unsupported decision preserves the source evidence, excludes the construct from executable OSI, and clears its promotion blocker.</p></fieldset>`}}
 function openObject(id){{editorObject=state.objects.find(o=>o.id===id);translationChoice=null;document.getElementById('editorType').textContent=labels[editorObject.section];document.getElementById('editorTitle').textContent=editorObject.name;document.getElementById('propertyFields').innerHTML=`<fieldset><legend>Semantic values</legend>${{editorObject.properties.map(propertyInput).join('')}}</fieldset>${{translationPanel(editorObject.translation)}}`;document.querySelectorAll('#propertyFields [data-property]').forEach(input=>input.addEventListener('focusout',()=>validateProperty(input)));document.querySelectorAll('[data-add-key]').forEach(button=>button.onclick=()=>{{const prop=editorObject.properties.find(item=>item.path===button.dataset.addKey);button.previousElementSibling.insertAdjacentHTML('beforeend',keySelect(prop,[]))}});document.querySelectorAll('[data-translation]').forEach(button=>button.onclick=()=>{{translationChoice=button.dataset.translation;document.getElementById('translationState').textContent='Selected: '+button.textContent;announce(button.textContent+' selected.')}});document.getElementById('removeButton').hidden=editorObject.protected===true;clearAudit();document.getElementById('editor').showModal();document.querySelector('#propertyFields input,#propertyFields textarea,#propertyFields select')?.focus()}}
 function openAdvanced(){{const op=document.getElementById('advancedOp').value,path=document.getElementById('advancedPath').value.trim();let value;try{{if(op!=='remove')value=JSON.parse(document.getElementById('advancedValue').value)}}catch(e){{announce('Advanced value must be valid JSON.');return}}editorObject={{id:'advanced',name:'Advanced operation',section:'overview',path,advancedOp:op,advancedValue:value,properties:[]}};document.getElementById('editorType').textContent='Advanced';document.getElementById('editorTitle').textContent='Review advanced operation';document.getElementById('propertyFields').innerHTML=`<p class="path">${{esc(op)}} ${{esc(path)}}</p>`;document.getElementById('removeButton').hidden=true;clearAudit();document.getElementById('editor').showModal();document.getElementById('rationale').focus()}}
 function openBulk(){{const selected=[...document.querySelectorAll('[data-bulk-object]:checked')].map(input=>state.objects.find(o=>o.id===input.dataset.bulkObject)).filter(Boolean);if(!selected.length){{announce('Select at least one translation.');return}}const statuses=new Set(selected.map(o=>o.translation.status));if(statuses.size!==1){{announce('Bulk review requires translations with the same status.');return}}editorObject={{id:'bulk',name:'Shared translation decision',section:active,bulkTranslation:selected,properties:[]}};translationChoice=null;document.getElementById('editorType').textContent='Bulk translation review';document.getElementById('editorTitle').textContent=`Review ${{selected.length}} selected translations`;document.getElementById('propertyFields').innerHTML=`<p>One decision and evidence record will be applied individually to each selected item.</p>${{translationPanel(selected[0].translation)}}`;document.querySelectorAll('[data-translation]').forEach(button=>button.onclick=()=>{{translationChoice=button.dataset.translation;document.getElementById('translationState').textContent='Selected: '+button.textContent}});document.getElementById('removeButton').hidden=true;clearAudit();document.getElementById('editor').showModal();document.getElementById('rationale').focus()}}
@@ -494,11 +494,9 @@ def _editable_objects(model: dict[str, Any]) -> list[dict[str, Any]]:
     model_path = "/semantic_model/0"
     datasets: Any = [item for item in model.get("datasets", []) if isinstance(item, dict)]
     dataset_names = [str(item.get("name")) for item in datasets]
+    relationships = [item for item in model.get("relationships", []) if isinstance(item, dict)]
     fields_by_dataset = {
-        str(item.get("name")): [
-            str(field.get("name")) for field in item.get("fields", []) if isinstance(field, dict)
-        ]
-        for item in datasets
+        str(item.get("name")): _physical_reference_options(item, relationships) for item in datasets
     }
     objects.append(
         _object(
@@ -578,39 +576,73 @@ def _editable_objects(model: dict[str, Any]) -> list[dict[str, Any]]:
                         ["name", "description", "expression", "ai_context"],
                     )
                 )
-    relationships = model.get("relationships", [])
-    if isinstance(relationships, list):
-        for index, relationship in enumerate(relationships):
-            if isinstance(relationship, dict):
-                context = f"{relationship.get('from', '?')} to {relationship.get('to', '?')}"
-                objects.append(
-                    _object(
-                        "relationships",
-                        f"relationship-{index}",
-                        str(relationship.get("name", f"Relationship {index + 1}")),
-                        context,
-                        f"{model_path}/relationships/{index}",
-                        relationship,
-                        [
-                            "name",
-                            "from",
-                            "to",
-                            "from_columns",
-                            "to_columns",
-                        ],
-                        options={
-                            "from": dataset_names,
-                            "to": dataset_names,
-                            "from_columns": fields_by_dataset.get(
-                                str(relationship.get("from", "")), []
-                            ),
-                            "to_columns": fields_by_dataset.get(
-                                str(relationship.get("to", "")), []
-                            ),
-                        },
-                    )
-                )
+    for index, relationship in enumerate(relationships):
+        context = f"{relationship.get('from', '?')} to {relationship.get('to', '?')}"
+        objects.append(
+            _object(
+                "relationships",
+                f"relationship-{index}",
+                str(relationship.get("name", f"Relationship {index + 1}")),
+                context,
+                f"{model_path}/relationships/{index}",
+                relationship,
+                [
+                    "name",
+                    "from",
+                    "to",
+                    "from_columns",
+                    "to_columns",
+                ],
+                options={
+                    "from": dataset_names,
+                    "to": dataset_names,
+                    "from_columns": fields_by_dataset.get(str(relationship.get("from", "")), []),
+                    "to_columns": fields_by_dataset.get(str(relationship.get("to", "")), []),
+                },
+            )
+        )
     return objects
+
+
+def _physical_reference_options(
+    dataset: dict[str, Any], relationships: list[dict[str, Any]]
+) -> list[str]:
+    """Return physical columns suitable for OSI key and relationship references."""
+
+    dataset_name = str(dataset.get("name", ""))
+    values: list[str] = []
+    for field in dataset.get("fields", []):
+        if not isinstance(field, dict):
+            continue
+        expression = field.get("expression")
+        if not isinstance(expression, dict):
+            continue
+        for dialect in expression.get("dialects", []):
+            if not isinstance(dialect, dict):
+                continue
+            value = dialect.get("expression")
+            if not isinstance(value, str):
+                continue
+            match = re.fullmatch(r"[A-Za-z_]\w*\.([A-Za-z_]\w*)", value.strip())
+            if match:
+                values.append(match.group(1))
+                break
+
+    for key in dataset.get("primary_key", []):
+        if isinstance(key, str):
+            values.append(key)
+    for unique_key in dataset.get("unique_keys", []):
+        if isinstance(unique_key, list):
+            values.extend(key for key in unique_key if isinstance(key, str))
+    for relationship in relationships:
+        if relationship.get("from") == dataset_name:
+            values.extend(
+                key for key in relationship.get("from_columns", []) if isinstance(key, str)
+            )
+        if relationship.get("to") == dataset_name:
+            values.extend(key for key in relationship.get("to_columns", []) if isinstance(key, str))
+
+    return list(dict.fromkeys(values))
 
 
 def _object(
@@ -684,13 +716,16 @@ def _translation_info(value: dict[str, Any], path: str) -> dict[str, Any] | None
             data = json.loads(extension["data"])
         except json.JSONDecodeError:
             continue
-        if not isinstance(data, dict) or data.get("kind") != "source_metadata":
+        if not isinstance(data, dict) or data.get("kind") not in {
+            "source_metadata",
+            "unsupported_review",
+        }:
             continue
         status = str(data.get("translation_status", "exact"))
-        if status == "exact":
+        if status in {"exact", "reviewed-unsupported"}:
             return None
         accepted_data = {**data, "translation_status": "exact"}
-        unsupported_data = {**data, "translation_status": "unsupported"}
+        unsupported_data = {**data, "translation_status": "reviewed-unsupported"}
         requested_data = {
             **data,
             "review_request": "Additional business or technical evidence is required.",
@@ -698,6 +733,7 @@ def _translation_info(value: dict[str, Any], path: str) -> dict[str, Any] | None
         return {
             "status": status,
             "source_expression": data.get("source_expression"),
+            "can_accept": data.get("kind") == "source_metadata",
             "path": f"{path}/custom_extensions/{index}",
             "accepted_value": {
                 **extension,
@@ -720,15 +756,15 @@ def _property_help(key: str) -> str:
         "name": "Stable semantic name used by analysts and downstream references.",
         "description": "Plain-language business meaning, scope, and exclusions.",
         "source": "Qualified physical source or source expression.",
-        "primary_key": "Select the fields that form the primary key.",
-        "unique_keys": "One alternate key per line; separate composite fields with commas.",
+        "primary_key": "Select the physical source columns that form the primary key.",
+        "unique_keys": "Select physical source columns for each alternate unique key.",
         "expression": "OSI expression object, including dialect-specific SQL when applicable.",
         "dimension": "OSI dimension metadata such as time or categorical behavior.",
         "ai_context": "Structured synonyms, examples, instructions, and other AI context.",
         "from": "Source dataset semantic name.",
         "to": "Target dataset semantic name.",
-        "from_columns": "Select the source-side relationship fields.",
-        "to_columns": "Select the target-side relationship fields.",
+        "from_columns": "Select physical foreign-key columns from the many-side dataset.",
+        "to_columns": "Select physical primary/unique-key columns from the one-side dataset.",
         "custom_extensions": (
             "Source and review metadata. Preserve unrelated entries; change translation status "
             "only when the supplied evidence fully resolves the source issue."
@@ -769,50 +805,9 @@ def _coordinate_renames(
             continue
         match = re.fullmatch(r"/semantic_model/0/datasets/(\d+)/fields/(\d+)/name", path)
         if match:
-            dataset_index, field_index = int(match.group(1)), int(match.group(2))
-            model = document["semantic_model"][0]
-            dataset = model["datasets"][dataset_index]
-            dataset_name = str(dataset["name"])
-            old_name = str(dataset["fields"][field_index]["name"])
-            new_name = str(normalized["value"])
-            _reject_ambiguous_expression_rewrite(document, old_name, path, explicit_paths)
-            key_paths: list[tuple[str, Any]] = []
-            if isinstance(dataset.get("primary_key"), list) and old_name in dataset["primary_key"]:
-                key_paths.append(
-                    (
-                        f"/semantic_model/0/datasets/{dataset_index}/primary_key",
-                        [new_name if item == old_name else item for item in dataset["primary_key"]],
-                    )
-                )
-            if isinstance(dataset.get("unique_keys"), list):
-                updated = [
-                    [new_name if item == old_name else item for item in key]
-                    if isinstance(key, list)
-                    else key
-                    for key in dataset["unique_keys"]
-                ]
-                if updated != dataset["unique_keys"]:
-                    key_paths.append(
-                        (f"/semantic_model/0/datasets/{dataset_index}/unique_keys", updated)
-                    )
-            for ref_path, value in key_paths:
-                if ref_path not in explicit_paths:
-                    result.append(_derived_operation(normalized, ref_path, value))
-            for index, relationship in enumerate(model.get("relationships", [])):
-                for side, columns_key in (("from", "from_columns"), ("to", "to_columns")):
-                    if relationship.get(side) != dataset_name:
-                        continue
-                    columns = relationship.get(columns_key)
-                    if isinstance(columns, list) and old_name in columns:
-                        ref_path = f"/semantic_model/0/relationships/{index}/{columns_key}"
-                        if ref_path not in explicit_paths:
-                            result.append(
-                                _derived_operation(
-                                    normalized,
-                                    ref_path,
-                                    [new_name if item == old_name else item for item in columns],
-                                )
-                            )
+            # Field names are semantic identifiers. OSI keys and relationship columns are
+            # physical source-column identifiers, so a semantic rename must not rewrite them.
+            continue
     return result
 
 

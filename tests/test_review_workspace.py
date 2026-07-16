@@ -14,6 +14,7 @@ from unittest.mock import patch
 
 from data_agent.io import ContractError
 from data_agent.semantic.conversion import convert_semantic
+from data_agent.semantic.models import load_document
 from data_agent.semantic.review_workspace import (
     ReviewApplication,
     MAX_REQUEST_BYTES,
@@ -87,7 +88,7 @@ class ReviewWorkspaceTests(unittest.TestCase):
             with self.assertRaisesRegex(ContractError, "evidence 0 requires type"):
                 validate_decisions(decisions, paths.raw)
 
-    def test_field_rename_compiles_coordinated_primary_key_update(self) -> None:
+    def test_field_rename_preserves_physical_key_references(self) -> None:
         with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
             _, paths = self._build(directory)
             decisions = default_decisions(paths.raw)
@@ -105,10 +106,7 @@ class ReviewWorkspaceTests(unittest.TestCase):
             ]
             patch = compile_decisions(decisions, paths)
             paths_by_operation = {item["path"]: item for item in patch["operations"]}
-            self.assertEqual(
-                paths_by_operation["/semantic_model/0/datasets/0/primary_key"]["value"],
-                ["order_identifier"],
-            )
+            self.assertNotIn("/semantic_model/0/datasets/0/primary_key", paths_by_operation)
             self.assertNotIn("intent", patch["operations"][0])
             self.assertTrue(paths.decisions.is_file())
             self.assertTrue(paths.patch.is_file())
@@ -182,7 +180,7 @@ class ReviewWorkspaceTests(unittest.TestCase):
                 "Refresh impact",
                 "object-level changes",
                 "Accept translation",
-                "Retain as unsupported",
+                "Retain as reviewed unsupported",
                 "Business",
                 "Analyst",
             ):
@@ -237,7 +235,7 @@ class ReviewWorkspaceTests(unittest.TestCase):
         accepted = json.loads(translation["accepted_value"]["data"])
         self.assertEqual(accepted["translation_status"], "exact")
         unsupported = json.loads(translation["unsupported_value"]["data"])
-        self.assertEqual(unsupported["translation_status"], "unsupported")
+        self.assertEqual(unsupported["translation_status"], "reviewed-unsupported")
 
     def test_keys_and_relationship_fields_use_guided_selectors(self) -> None:
         document = {
@@ -246,14 +244,43 @@ class ReviewWorkspaceTests(unittest.TestCase):
                 {
                     "name": "orders",
                     "source": "DB.SCHEMA.ORDERS",
-                    "fields": [{"name": "customer_id"}, {"name": "order_id"}],
+                    "fields": [
+                        {
+                            "name": "customer_identifier",
+                            "expression": {
+                                "dialects": [
+                                    {"dialect": "SNOWFLAKE", "expression": "orders.customer_id"}
+                                ]
+                            },
+                        },
+                        {
+                            "name": "order_identifier",
+                            "expression": {
+                                "dialects": [
+                                    {"dialect": "SNOWFLAKE", "expression": "orders.order_id"}
+                                ]
+                            },
+                        },
+                    ],
                     "primary_key": ["order_id"],
                     "unique_keys": [["customer_id", "order_id"]],
                 },
                 {
                     "name": "customers",
                     "source": "DB.SCHEMA.CUSTOMERS",
-                    "fields": [{"name": "customer_id"}],
+                    "fields": [
+                        {
+                            "name": "customer_identifier",
+                            "expression": {
+                                "dialects": [
+                                    {
+                                        "dialect": "SNOWFLAKE",
+                                        "expression": "customers.customer_id",
+                                    }
+                                ]
+                            },
+                        }
+                    ],
                 },
             ],
             "relationships": [
@@ -275,6 +302,40 @@ class ReviewWorkspaceTests(unittest.TestCase):
         self.assertEqual(dataset_kinds["Unique keys"], "key_selects")
         self.assertEqual(relationship_kinds["From columns"], "multi_select")
         self.assertEqual(relationship_kinds["To columns"], "multi_select")
+        primary_key = next(
+            item for item in datasets["properties"] if item["label"] == "Primary key"
+        )
+        from_columns = next(
+            item for item in relationships["properties"] if item["label"] == "From columns"
+        )
+        self.assertEqual(primary_key["options"], ["customer_id", "order_id"])
+        self.assertNotIn("customer_identifier", primary_key["options"])
+        self.assertIn("customer_id", from_columns["options"])
+
+    def test_powerbi_selectors_preserve_physical_keys_and_relationship_columns(self) -> None:
+        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+            built = convert_semantic(
+                {
+                    "request_id": "powerbi-workspace",
+                    "source_path": str(ROOT / "tests/fixtures/powerbi"),
+                    "model_name": "powerbi_workspace",
+                    "output_dir": directory,
+                }
+            )
+            model = load_document(str(built["raw_model_path"]))["semantic_model"][0]
+            objects = _editable_objects(model)
+
+        orders = next(item for item in objects if item["name"] == "orders")
+        primary_key = next(item for item in orders["properties"] if item["label"] == "Primary key")
+        relationship = next(item for item in objects if item["section"] == "relationships")
+        from_columns = next(
+            item for item in relationship["properties"] if item["label"] == "From columns"
+        )
+        self.assertEqual(primary_key["value"], ["order_id"])
+        self.assertIn("order_id", primary_key["options"])
+        self.assertNotIn("orderid", primary_key["options"])
+        self.assertEqual(from_columns["value"], ["customer_id"])
+        self.assertIn("customer_id", from_columns["options"])
 
     def test_loopback_server_rejects_bad_token_and_origin_and_saves_draft(self) -> None:
         with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:

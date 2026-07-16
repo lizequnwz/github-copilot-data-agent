@@ -60,6 +60,11 @@ class SemanticConversionTests(unittest.TestCase):
                 for item in provenance["unsupported"]
             )
         )
+        unsupported_review = json.loads(
+            document["semantic_model"][0]["custom_extensions"][1]["data"]
+        )
+        self.assertEqual(unsupported_review["kind"], "unsupported_review")
+        self.assertEqual(unsupported_review["translation_status"], "requires-human-review")
         compiled = compile_plan(
             document,
             {

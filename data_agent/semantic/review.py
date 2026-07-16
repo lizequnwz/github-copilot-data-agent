@@ -3,7 +3,6 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
-import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -225,8 +224,6 @@ def _validate_operation(operation: Any, index: int, raw_sha: str) -> None:
         raise ContractError(f"review operation {index} path must be a JSON Pointer")
     if path == "/version" or path.startswith("/version/"):
         raise ContractError("review patches cannot change the Ossie version")
-    if re.match(r"^/semantic_model/\d+/custom_extensions(?:/|$)", path):
-        raise ContractError("review patches cannot change model-level converter provenance")
     if operation["op"] != "remove" and "value" not in operation:
         raise ContractError(f"review operation {index} requires value")
     if not isinstance(operation.get("rationale"), str) or not operation["rationale"].strip():

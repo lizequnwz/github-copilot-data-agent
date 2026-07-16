@@ -2,6 +2,24 @@
 
 Run commands from the repository root.
 
+## Validation-only inspection
+
+Validate an existing promoted or generated Ossie document without conversion or promotion:
+
+```bash
+uv run python -m data_agent osi-validate \
+  --input examples/requests/osi-validate.json --output /tmp/osi-validation.json
+```
+
+## Raw conversion only
+
+Omit every review option when the requested branch stops at deterministic artifacts:
+
+```bash
+uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py \
+  tests/fixtures/generic/sales.yaml --model-name demo_generic
+```
+
 ## Power BI TMDL
 
 ```bash
@@ -42,8 +60,9 @@ semantic/generated/<model>.raw.osi.yaml
 semantic/generated/<model>.conversion.json
 ```
 
-The browser workspace opens after conversion. Resolve blocking mappings, review important fields,
-relationships, metric expressions, and AI context, then select **Apply and validate**. A clean
+For commands containing `--review-ui`, the browser workspace opens after conversion. Resolve
+blocking mappings, review important fields, relationships, metric expressions, and AI context,
+then select **Apply and validate**. A clean
 review writes `<model>.osi.yaml` and promotes it to `semantic/models/<model>.yaml`; generated
 output is replaceable. Add `--no-open` for a headless session, or apply exported decisions later
 with `--review-decisions PATH`.

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import html
+import json
 import math
 import re
 from datetime import datetime, timezone
@@ -225,6 +226,41 @@ def render_report(request: dict[str, Any]) -> dict[str, Any]:
     query_details = "".join(
         f'<div class="meta-item"><dt>{html.escape(str(key).replace("_", " ").title())}</dt><dd>{html.escape(str(value))}</dd></div>'
         for key, value in metadata.items()
+        if key != "title"
+    )
+    question = str(request.get("question", "")).strip()
+    question_html = f'<p class="question">{html.escape(question)}</p>' if question else ""
+    interpretation = request.get("interpretation", {})
+    if not isinstance(interpretation, dict):
+        raise ContractError("interpretation must be an object")
+    interpretation_items = "".join(
+        f'<div class="interpretation-item"><dt>{html.escape(str(key).replace("_", " ").title())}</dt><dd>{html.escape(str(value))}</dd></div>'
+        for key, value in interpretation.items()
+    )
+    interpretation_html = (
+        '<section class="card" aria-labelledby="interpretation-title">'
+        '<div class="section-heading"><div><span class="step">01 / INTERPRET</span>'
+        '<h2 id="interpretation-title">Resolved question</h2></div>'
+        '<span class="status-text">Definitions unambiguous</span></div>'
+        f'<dl class="interpretation-grid">{interpretation_items}</dl></section>'
+        if interpretation_items
+        else ""
+    )
+    validation_summary = request.get("validation_summary", {})
+    if not isinstance(validation_summary, dict):
+        raise ContractError("validation_summary must be an object")
+    validation_items = "".join(
+        f'<div class="contract-item"><dt>{html.escape(str(key).replace("_", " ").title())}</dt><dd>{html.escape(str(value))}</dd></div>'
+        for key, value in validation_summary.items()
+    )
+    validation_html = (
+        '<section class="card" aria-labelledby="contract-title">'
+        '<div class="section-heading"><div><span class="step">02 / VALIDATE</span>'
+        '<h2 id="contract-title">Execution contract</h2></div>'
+        '<span class="status-text success-text">All checks passed</span></div>'
+        f'<dl class="contract-grid">{validation_items}</dl></section>'
+        if validation_items
+        else ""
     )
     definitions = request.get("definitions", {})
     if not isinstance(definitions, dict):
@@ -241,7 +277,19 @@ def render_report(request: dict[str, Any]) -> dict[str, Any]:
         caveats_html = "<li>No additional caveats were supplied.</li>"
     methodology = html.escape(str(request.get("methodology", "Not provided")))
     sql = html.escape(str(request.get("sql", "Not available")))
-    chart = _safe_chart_svg(request.get("chart_svg"))
+    chart = _safe_chart_svg(
+        request.get("chart_svg"), heading=str(request.get("chart_heading", "Chart"))
+    )
+    plan = request.get("plan")
+    if plan is not None and not isinstance(plan, dict):
+        raise ContractError("plan must be an object")
+    plan_html = (
+        "<details><summary>Show normalized semantic plan</summary><pre><code>"
+        + html.escape(json.dumps(plan, indent=2, sort_keys=True))
+        + "</code></pre></details>"
+        if isinstance(plan, dict)
+        else ""
+    )
     title = html.escape(str(metadata["title"]))
     badges = ['<span class="badge success">Validation passed</span>']
     if metadata.get("data_freshness"):
@@ -250,6 +298,12 @@ def render_report(request: dict[str, Any]) -> dict[str, Any]:
         )
     if metadata.get("period"):
         badges.append(f'<span class="badge">Period: {html.escape(str(metadata["period"]))}</span>')
+    if metadata.get("truncated") is not None:
+        badges.append(
+            '<span class="badge success">Complete result</span>'
+            if metadata["truncated"] is False
+            else '<span class="badge warning">Result truncated</span>'
+        )
     badges.append(
         f'<span class="badge">Generated: {html.escape(str(metadata["generated_at"]))}</span>'
     )
@@ -257,13 +311,14 @@ def render_report(request: dict[str, Any]) -> dict[str, Any]:
     document = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark"><title>{title}</title>
 <style>
-:root{{--background:#f8fafc;--surface:#fff;--surface-muted:#e9eef6;--text:#172554;--muted:#475569;--primary:#1e40af;--accent:#b45309;--border:#bfdbfe;--ring:#1e40af;--success:#166534;--shadow:0 8px 20px rgba(30,64,175,.08)}}
-*{{box-sizing:border-box}}html{{scroll-behavior:smooth}}body{{margin:0;background:var(--background);color:var(--text);font:16px/1.6 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}}a{{color:var(--primary)}}a:focus-visible,summary:focus-visible{{outline:3px solid var(--ring);outline-offset:3px}}.skip{{position:absolute;left:-9999px;top:1rem;background:var(--surface);padding:.75rem 1rem;z-index:10}}.skip:focus{{left:1rem}}main{{width:min(1160px,calc(100% - 2rem));margin:0 auto;padding:3rem 0 5rem}}header{{display:grid;gap:1rem;margin-bottom:2rem}}.eyebrow{{color:var(--primary);font-size:.8rem;font-weight:800;letter-spacing:0;text-transform:uppercase}}h1{{font-size:2.5rem;line-height:1.1;letter-spacing:0;margin:0;max-width:24ch}}h2{{font-size:1.35rem;line-height:1.25;margin:0 0 1rem}}p{{max-width:72ch}}.badges{{display:flex;flex-wrap:wrap;gap:.5rem}}.badge{{display:inline-flex;align-items:center;min-height:32px;padding:.25rem .7rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-size:.82rem;font-weight:700}}.badge.success{{color:var(--success)}}.grid{{display:grid;grid-template-columns:repeat(12,1fr);gap:1rem}}.card{{grid-column:span 12;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.5rem;box-shadow:var(--shadow)}}.summary{{font-size:1.15rem;border-left:5px solid var(--accent)}}.chart svg{{display:block;width:100%;height:auto;color:var(--text);background:transparent}}.table-wrap{{overflow:auto;border:1px solid var(--border);border-radius:8px}}table{{border-collapse:collapse;width:100%;min-width:560px}}th,td{{padding:.7rem .8rem;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}}th{{position:sticky;top:0;background:var(--surface-muted);font-size:.78rem;letter-spacing:0;text-transform:uppercase}}tbody tr:nth-child(even){{background:color-mix(in srgb,var(--surface-muted) 40%,transparent)}}td.number{{font-variant-numeric:tabular-nums;text-align:right}}dl{{margin:0}}.definition,.meta-item{{display:grid;gap:.2rem;padding:.7rem 0;border-bottom:1px solid var(--border)}}dt{{font-weight:800}}dd{{margin:0;color:var(--muted);overflow-wrap:anywhere}}ul{{padding-left:1.25rem}}details{{border:1px solid var(--border);border-radius:8px;padding:.8rem 1rem}}summary{{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:800}}pre{{white-space:pre-wrap;overflow-wrap:anywhere;background:#0f172a;color:#e2e8f0;padding:1rem;border-radius:8px;overflow:auto;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}}.footer{{margin-top:2rem;color:var(--muted);font-size:.85rem}}
+:root{{--background:#f8fafc;--surface:#fff;--surface-muted:#e9eef6;--text:#172554;--muted:#475569;--primary:#1e40af;--accent:#b45309;--border:#bfdbfe;--ring:#1e40af;--success:#166534;--warning:#92400e;--shadow:0 8px 20px rgba(30,64,175,.08)}}
+*{{box-sizing:border-box}}html{{scroll-behavior:smooth}}body{{margin:0;background:var(--background);color:var(--text);font:16px/1.6 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}}a{{color:var(--primary)}}a:focus-visible,summary:focus-visible{{outline:3px solid var(--ring);outline-offset:3px}}.skip{{position:absolute;left:-9999px;top:1rem;background:var(--surface);padding:.75rem 1rem;z-index:10}}.skip:focus{{left:1rem}}main{{width:min(1160px,calc(100% - 2rem));margin:0 auto;padding:3rem 0 5rem}}header{{display:grid;gap:1rem;margin-bottom:2rem;padding-bottom:2rem;border-bottom:1px solid var(--border)}}.eyebrow,.step{{color:var(--primary);font-size:.78rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}}h1{{font-size:clamp(2.15rem,6vw,3.65rem);line-height:1.03;letter-spacing:-.035em;margin:0;max-width:18ch}}h2{{font-size:1.35rem;line-height:1.25;margin:.25rem 0 1rem}}p{{max-width:72ch}}.question{{margin:0;max-width:76ch;color:var(--muted);font-size:1.08rem}}.badges{{display:flex;flex-wrap:wrap;gap:.5rem}}.badge{{display:inline-flex;align-items:center;min-height:32px;padding:.25rem .7rem;border:1px solid var(--border);border-radius:999px;background:var(--surface);font-size:.82rem;font-weight:700}}.badge.success,.success-text{{color:var(--success)}}.badge.warning{{color:var(--warning)}}.grid{{display:grid;grid-template-columns:repeat(12,1fr);gap:1rem}}.card{{grid-column:span 12;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:clamp(1.1rem,3vw,1.6rem);box-shadow:var(--shadow)}}.summary{{font-size:1.2rem;border-left:5px solid var(--accent);background:linear-gradient(110deg,var(--surface),var(--surface-muted))}}.summary p{{font-size:clamp(1.25rem,3vw,1.65rem);line-height:1.4;margin-bottom:.25rem;max-width:58ch}}.section-heading{{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:.75rem;margin-bottom:1rem}}.section-heading h2{{margin:.15rem 0 0}}.status-text{{font-size:.84rem;font-weight:750;padding:.25rem .65rem;border:1px solid var(--border);border-radius:999px}}.interpretation-grid,.contract-grid{{display:grid;gap:.75rem}}.interpretation-item,.contract-item{{padding:.85rem 1rem;background:var(--surface-muted);border-radius:8px;min-width:0}}.interpretation-item dt,.contract-item dt{{color:var(--muted);font-size:.75rem;letter-spacing:.05em;text-transform:uppercase}}.interpretation-item dd,.contract-item dd{{color:var(--text);font-weight:750}}.chart svg{{display:block;width:100%;height:auto;color:var(--text);background:transparent}}.table-wrap{{overflow:auto;border:1px solid var(--border);border-radius:8px}}table{{border-collapse:collapse;width:100%;min-width:560px}}th,td{{padding:.75rem .9rem;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}}th{{position:sticky;top:0;background:var(--surface-muted);font-size:.78rem;letter-spacing:.05em;text-transform:uppercase}}tbody tr:nth-child(even){{background:color-mix(in srgb,var(--surface-muted) 40%,transparent)}}td.number{{font-variant-numeric:tabular-nums;text-align:right;font-weight:700}}dl{{margin:0}}.definition,.meta-item{{display:grid;gap:.2rem;padding:.7rem 0;border-bottom:1px solid var(--border)}}dt{{font-weight:800}}dd{{margin:0;color:var(--muted);overflow-wrap:anywhere}}ul{{padding-left:1.25rem}}details{{border:1px solid var(--border);border-radius:8px;padding:.8rem 1rem}}details+details{{margin-top:.75rem}}summary{{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:800}}pre{{white-space:pre-wrap;overflow-wrap:anywhere;background:#0f172a;color:#e2e8f0;padding:1rem;border-radius:8px;overflow:auto;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}}.footer{{margin-top:2rem;color:var(--muted);font-size:.85rem}}
+@media(min-width:680px){{.interpretation-grid{{grid-template-columns:repeat(2,minmax(0,1fr))}}.contract-grid{{grid-template-columns:repeat(4,minmax(0,1fr))}}}}
 @media(min-width:800px){{.span-7{{grid-column:span 7}}.span-5{{grid-column:span 5}}.span-6{{grid-column:span 6}}}}
-@media(prefers-color-scheme:dark){{:root{{--background:#071126;--surface:#0f1d38;--surface-muted:#18294a;--text:#eff6ff;--muted:#bfdbfe;--primary:#93c5fd;--accent:#fbbf24;--border:#29436c;--ring:#93c5fd;--success:#86efac;--shadow:none}}pre{{background:#020617}}}}
+@media(prefers-color-scheme:dark){{:root{{--background:#071126;--surface:#0f1d38;--surface-muted:#18294a;--text:#eff6ff;--muted:#bfdbfe;--primary:#93c5fd;--accent:#fbbf24;--border:#29436c;--ring:#93c5fd;--success:#86efac;--warning:#fcd34d;--shadow:none}}pre{{background:#020617}}}}
 @media(prefers-reduced-motion:reduce){{html{{scroll-behavior:auto}}}}
 @media print{{body{{background:#fff;color:#111}}main{{width:100%;padding:0}}.card{{box-shadow:none;break-inside:avoid}}details{{border:0;padding:0}}details>summary{{display:none}}details>*{{display:block!important}}}}
-</style></head><body><a class="skip" href="#content">Skip to report</a><main id="content"><header><div class="eyebrow">Analysis report</div><h1>{title}</h1><div class="badges">{badges_html}</div></header><div class="grid"><section class="card summary" aria-labelledby="summary-title"><h2 id="summary-title">Answer</h2><p>{summary}</p></section>{chart}<section class="card" aria-labelledby="results-title"><h2 id="results-title">Results</h2><div class="table-wrap" tabindex="0" aria-label="Scrollable result table"><table><thead><tr>{table_head}</tr></thead><tbody>{table_rows}</tbody></table></div></section><section class="card span-7" aria-labelledby="definitions-title"><h2 id="definitions-title">Definitions</h2><dl>{definitions_html}</dl></section><section class="card span-5" aria-labelledby="method-title"><h2 id="method-title">Method</h2><p>{methodology}</p></section><section class="card span-6" aria-labelledby="caveats-title"><h2 id="caveats-title">Notes</h2><ul>{caveats_html}</ul></section><section class="card span-6" aria-labelledby="details-title"><h2 id="details-title">Query details</h2><dl>{query_details}</dl></section><section class="card" aria-labelledby="sql-title"><h2 id="sql-title">SQL</h2><details><summary>Show SQL</summary><pre><code>{sql}</code></pre></details></section></div><p class="footer">Self-contained HTML with no remote scripts, fonts, or assets.</p></main></body></html>"""
+</style></head><body><a class="skip" href="#content">Skip to report</a><main id="content"><header><div class="eyebrow">Validated analysis · Ask Data</div><h1>{title}</h1>{question_html}<div class="badges">{badges_html}</div></header><div class="grid"><section class="card summary" aria-labelledby="summary-title"><span class="step">Answer</span><h2 id="summary-title">Direct finding</h2><p>{summary}</p></section>{interpretation_html}{validation_html}{chart}<section class="card" aria-labelledby="results-title"><div class="section-heading"><div><span class="step">03 / RESULT</span><h2 id="results-title">Ranked result</h2></div><span class="status-text">{len(rows)} rows returned</span></div><div class="table-wrap" tabindex="0" aria-label="Scrollable result table"><table><thead><tr>{table_head}</tr></thead><tbody>{table_rows}</tbody></table></div></section><section class="card span-7" aria-labelledby="definitions-title"><h2 id="definitions-title">Business definitions</h2><dl>{definitions_html}</dl></section><section class="card span-5" aria-labelledby="method-title"><h2 id="method-title">Method</h2><p>{methodology}</p></section><section class="card span-6" aria-labelledby="caveats-title"><h2 id="caveats-title">Notes and caveats</h2><ul>{caveats_html}</ul></section><section class="card span-6" aria-labelledby="details-title"><h2 id="details-title">Reproducibility</h2><dl>{query_details}</dl></section><section class="card" aria-labelledby="sql-title"><div class="section-heading"><div><span class="step">04 / INSPECT</span><h2 id="sql-title">SQL and semantic plan</h2></div><span class="status-text">Read-only · parameterized</span></div><details><summary>Show compiled SQL</summary><pre><code>{sql}</code></pre></details>{plan_html}</section></div><p class="footer">Self-contained HTML with no remote scripts, fonts, or assets.</p></main></body></html>"""
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(document, encoding="utf-8")
     return envelope(
@@ -275,7 +330,7 @@ def render_report(request: dict[str, Any]) -> dict[str, Any]:
     )
 
 
-def _safe_chart_svg(value: Any) -> str:
+def _safe_chart_svg(value: Any, *, heading: str) -> str:
     if value is None:
         return ""
     if not isinstance(value, str) or not value.lstrip().startswith("<svg"):
@@ -285,4 +340,4 @@ def _safe_chart_svg(value: Any) -> str:
     )
     if blocked.search(value):
         raise ContractError("chart_svg contains blocked active or external content")
-    return f'<section class="card chart" aria-labelledby="chart-heading"><h2 id="chart-heading">Chart</h2>{value}</section>'
+    return f'<section class="card chart" aria-labelledby="chart-heading"><div class="section-heading"><div><span class="step">03 / COMPARE</span><h2 id="chart-heading">{html.escape(heading)}</h2></div><span class="status-text">Sorted descending</span></div>{value}</section>'

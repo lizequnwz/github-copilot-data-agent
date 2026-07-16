@@ -68,7 +68,9 @@ def analyze(request: dict[str, Any]) -> dict[str, Any]:
             "request_id": request.get("request_id", "analysis"),
             "result": result,
             "grain": checks.get("grain", compiled["result_grain"]),
-            "required_columns": checks.get("required_columns", []),
+            "required_columns": checks.get(
+                "required_columns", list(compiled["result_columns"].values())
+            ),
             "required_non_null": checks.get("required_non_null", []),
             "numeric_ranges": checks.get("numeric_ranges", {}),
         }

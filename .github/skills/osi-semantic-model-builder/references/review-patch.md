@@ -43,6 +43,7 @@ model. The raw SHA-256 comes from `osi.raw_model_sha256` in the conversion manif
   `inference`. Logic changes need high-confidence direct evidence for automatic promotion.
 - Assumptions and low-confidence changes are allowed in a reviewed artifact but prevent clean
   automatic promotion.
-- `/version` and model-level conversion provenance are protected.
+- `/version` and the model-level `conversion_provenance` extension are protected. A separate
+  `unsupported_review` extension may receive an audited `reviewed-unsupported` disposition.
 - Update a source metadata extension's serialized `translation_status` when review evidence fully
   resolves an earlier `equivalent-with-assumptions` or `requires-human-review` state.

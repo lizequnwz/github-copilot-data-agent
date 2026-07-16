@@ -58,28 +58,33 @@ The most useful request includes:
 - time range
 - desired output, such as an answer, table, chart, or report
 
-The agent searches `semantic/models/`, asks only material clarification questions, confirms the
-interpretation below, confirms Snowflake context before its first connection, validates and runs a
-bounded query, checks the result, and leads with the answer. It does not replace unsupported
-semantic-plan behavior with ad hoc SQL.
+The agent searches `semantic/models/`, asks only material clarification questions, and selects a
+promoted metric when available. If no promoted metric fits, it may calculate an explicitly
+unpromoted metric from promoted fields or validate ad hoc text-to-SQL over promoted physical
+sources and configured `access.allowed_objects`. It confirms Snowflake context before its first
+connection, validates and runs a bounded query, checks the result, and leads with the answer.
 
 ```text
-Metric
+Metric or explicit formula
 Population
 Dimensions
 Filters
 Period
 Expected result grain
-Semantic model
+Source mode and sources
 Requested output
 ```
 
-The structured plan supports explicit filters, an inclusive-start/exclusive-end `time_range`, and
-`order_by` on selected dimensions or metrics. The response preserves qualified semantic `grain`
-and separately reports returned-column `result_grain`, `result_columns`, `max_rows`, and the
-extra-row `query_limit` used to detect truncation. Snowflake normally returns unquoted aliases in
-uppercase even when the generated SQL uses lowercase identifiers; result checks therefore match
-column names case-insensitively and preserve the returned names for query evidence.
+Promoted and derived structured plans support explicit filters, an
+inclusive-start/exclusive-end `time_range`, and `order_by` on selected dimensions or metrics.
+Derived metrics provide `name`, `description`, `expression`, and `assumptions` and are not written
+back to the model. Ad hoc requests provide explicit SQL, positional parameters, metric metadata,
+all eight interpretation fields, and `LIMIT max_rows + 1`; their physical sources must be promoted
+or allowlisted. Responses preserve qualified semantic `grain` when applicable and separately
+report returned-column `result_grain`, `result_columns`, `max_rows`, and the extra-row `query_limit`
+used to detect truncation. Snowflake normally returns unquoted aliases in uppercase even when the
+generated SQL uses lowercase identifiers; result checks therefore match column names
+case-insensitively and preserve the returned names for query evidence.
 
 For a live query, expect:
 
@@ -87,11 +92,13 @@ For a live query, expect:
 Answer
 Definition and grain
 Filters and time range
-Semantic model
+Source mode, semantic model or approved objects
 Query ID and role
 SQL
 Caveats or follow-up questions
 ```
+
+Derived and ad hoc answers also identify the formula, assumptions, and unpromoted status.
 
 ## First connection
 
@@ -250,6 +257,27 @@ Compile a bounded two-month plan:
 }
 ```
 
+Compile a model-backed metric without promoting a new shared definition:
+
+```bash
+uv run python -m data_agent osi-compile \
+  --input examples/analysis/average-order-value-derived.json \
+  --output /tmp/average-order-value-derived.response.json
+```
+
+Validate an unpromoted text-to-SQL plan over a promoted or allowlisted source:
+
+```bash
+uv run python -m data_agent analyze \
+  --input examples/analysis/average-order-value-ad-hoc.json \
+  --output /tmp/average-order-value-ad-hoc.response.json
+```
+
+The offline ad hoc example reads source controls from `snowflake_config.example.yaml`; no connection
+occurs unless the request also sets `execute: true`. Use a completed local `snowflake_config.yaml`
+for live execution. Predicate values must use `%s` placeholders, every output must have a stable
+name, and the SQL limit must equal `max_rows + 1`.
+
 Run the complete offline analysis with
 `examples/analysis/sales-by-region.json`. Validate OSI with:
 
@@ -284,5 +312,5 @@ Run competency questions:
 Use these commands respectively with `osi-search`, `osi-compile`, `analyze`, `osi-validate`,
 `semantic-convert`, `semantic-review`, `semantic-diff`, and `osi-test`.
 
-Runnable request files for search, compile, validation, and competency testing are available under
-`examples/requests/`.
+Runnable request files for search, compile, validation, competency testing, derived metrics, and ad
+hoc analysis are available under `examples/`.

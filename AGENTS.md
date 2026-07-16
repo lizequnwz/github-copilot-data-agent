@@ -19,9 +19,12 @@ instructions.
 
 ## Repository-wide gates
 
-- **Semantic gate**: use a promoted model from `semantic/models/` as the source of business
-  definitions. An unsupported model or compiler operation leads to a narrower question or model
-  enhancement, not ad hoc analytical SQL.
+- **Source and metric gate**: prefer business definitions and metrics from promoted models in
+  `semantic/models/`. When no promoted metric answers the question, permit either an explicitly
+  unpromoted derived metric over promoted fields and relationships or validated ad hoc SQL over
+  promoted physical sources and configured `allowed_objects`. Always expose the formula,
+  population, grain, filters, assumptions, source mode, and SQL; never present an ad hoc result as a
+  shared definition or promote it implicitly.
 - **Connection gate**: display and confirm the non-secret `snowflake_config.yaml` context before
   the first connection and whenever it changes. Connect through browser SSO with the configured
   read-only role.

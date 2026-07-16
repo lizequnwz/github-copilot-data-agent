@@ -42,6 +42,8 @@ def main() -> int:
         "docs/SEMANTIC_MODELS.md",
         "examples/analysis/sales-by-region.json",
         "examples/analysis/sales-by-segment.json",
+        "examples/analysis/average-order-value-derived.json",
+        "examples/analysis/average-order-value-ad-hoc.json",
         "examples/requests/osi-compile.json",
         "examples/requests/osi-search.json",
         "examples/requests/osi-test.json",
@@ -86,6 +88,8 @@ def main() -> int:
         json.loads(SCHEMA.read_text())
         json.loads((ROOT / "examples/analysis/sales-by-region.json").read_text())
         json.loads((ROOT / "examples/analysis/sales-by-segment.json").read_text())
+        json.loads((ROOT / "examples/analysis/average-order-value-derived.json").read_text())
+        json.loads((ROOT / "examples/analysis/average-order-value-ad-hoc.json").read_text())
         json.loads((ROOT / "examples/requests/osi-compile.json").read_text())
         json.loads((ROOT / "examples/requests/osi-search.json").read_text())
         json.loads((ROOT / "examples/requests/osi-test.json").read_text())

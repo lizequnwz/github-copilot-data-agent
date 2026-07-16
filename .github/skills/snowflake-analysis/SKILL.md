@@ -6,7 +6,7 @@ allowed-tools: ["read", "search", "edit", "execute"]
 
 # Snowflake analysis
 
-Apply the semantic, connection, and validation gates from `AGENTS.md`. Run helpers from the
+Apply the source and metric, connection, and validation gates from `AGENTS.md`. Run helpers from the
 repository root with:
 
 ```bash
@@ -27,17 +27,25 @@ offline analysis shape. The Python handlers remain authoritative for request val
 ## Interpretation gate
 
 1. Identify the metric, dimensions, filters, population, time range, and desired output.
-2. Search `semantic/models/` with `osi-search` and select a model only when its fields,
-   relationships, and metric definitions cover the question.
-3. Compile a structured plan with `osi-compile`. Treat compiler support as part of the semantic
-   gate; on an unsupported operation, explain the gap and offer a narrower question or model
-   enhancement.
-4. Show the resolved metric, population, dimensions, filters, period, expected result grain,
-   semantic model, and requested output. Ask one focused question only when a remaining ambiguity
-   would materially change the result.
+2. Search `semantic/models/` with `osi-search`, then choose the first applicable source mode:
+   - **Promoted**: use a promoted metric and the model compiler.
+   - **Derived**: when promoted fields and relationships cover the question, define an explicitly
+     unpromoted `derived_metrics` expression with a description and assumptions, then use the model
+     compiler.
+   - **Ad hoc**: when the question needs other approved data, generate explicit text-to-SQL and
+     validate it through `analyze` with `analysis_mode: ad_hoc`. Sources must be either physical
+     sources from promoted models or configured `access.allowed_objects`.
+3. For promoted or derived mode, compile a structured plan with `osi-compile`. For ad hoc mode,
+   require an explicit metric name, formula, description, assumptions, result grain, positional
+   parameters, and all eight interpretation fields before validating the proposed SQL.
+4. Show the resolved metric or formula, population, dimensions, filters, period, expected result
+   grain, source mode and sources, and requested output. Mark derived and ad hoc metrics as
+   unpromoted. Ask one focused question only when a remaining ambiguity would materially change the
+   result.
 
 The interpretation gate passes only when all eight displayed fields are explicit and
-`osi-compile` returns `status: success` with SQL, parameters, result columns, and result grain.
+either `osi-compile` returns `status: success` for promoted/derived mode or `analyze` returns
+`status: planned` for ad hoc mode, with SQL, parameters, result columns, and result grain.
 
 ## Connection gate
 
@@ -56,8 +64,9 @@ evidence.
 
 ## Execution gate
 
-1. Use the SQL and parameters returned by `osi-compile`. Use metadata discovery only to diagnose a
-   model mapping gap; raw metadata does not define an analytical metric.
+1. Use the SQL and parameters returned by `osi-compile` or validated by the ad hoc `analyze` plan.
+   Metadata may support an explicitly unpromoted calculation but does not create a shared business
+   definition.
 2. Confirm explicit projections and joins, the compiled result grain, parameterized values, and a
    numeric `max_rows` no greater than the configured cap.
    - Use `time_range` with `field`, inclusive `start`, exclusive `end_exclusive`, and `label`.
@@ -77,6 +86,8 @@ The execution gate passes only when `validate-sql` reports valid read-only SQL,
 
 ## Respond
 
-Lead with the direct answer. Then include the metric definition, filters, period, semantic model,
-query ID, role, SQL, and meaningful caveats. Mark any unavailable evidence explicitly. Return the
-validated aggregate evidence to the custom agent when the requested output includes reporting.
+Lead with the direct answer. Then include the metric definition or ad hoc formula, source mode,
+filters, period, semantic model or approved objects, assumptions, query ID, role, SQL, and meaningful
+caveats. Mark derived and ad hoc metrics as unpromoted and mark unavailable evidence explicitly.
+Return the validated aggregate evidence to the custom agent when the requested output includes
+reporting.

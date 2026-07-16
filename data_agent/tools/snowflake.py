@@ -9,6 +9,7 @@ from typing import Any
 from data_agent.config import Settings
 from data_agent.io import ContractError, envelope, require_string
 from data_agent.security.sql import validate_sql
+from data_agent.semantic.models import promoted_sources
 
 _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]*$")
 _QUALIFIED_OBJECT = re.compile(
@@ -107,14 +108,28 @@ def connection_check(request: dict[str, Any]) -> dict[str, Any]:
 def execute_readonly(request: dict[str, Any]) -> dict[str, Any]:
     settings = load_settings(request)
     sql = require_string(request, "sql")
-    validation = validate_sql(
-        sql, blocked_schemas=settings.blocked_schemas, allowed_objects=settings.allowed_objects
-    )
-    requested_rows = int(request.get("max_rows", settings.max_rows))
-    max_rows = min(max(requested_rows, 1), settings.max_rows)
     parameters = request.get("parameters", [])
     if not isinstance(parameters, (list, dict)):
         raise ContractError("parameters must be an array or object")
+    require_parameterized = request.get("require_parameterized_predicates") is True
+    if require_parameterized and not isinstance(parameters, list):
+        raise ContractError("parameterized ad hoc SQL requires a parameters array")
+    allowed_objects = settings.allowed_objects
+    if request.get("require_approved_sources") is True:
+        allowed_objects = tuple(sorted(set(allowed_objects).union(promoted_sources())))
+        if not allowed_objects:
+            raise ContractError(
+                "ad hoc SQL requires a promoted source or an object in access.allowed_objects"
+            )
+    validation = validate_sql(
+        sql,
+        blocked_schemas=settings.blocked_schemas,
+        allowed_objects=allowed_objects,
+        parameters=parameters if isinstance(parameters, list) else None,
+        require_parameterized_predicates=require_parameterized,
+    )
+    requested_rows = int(request.get("max_rows", settings.max_rows))
+    max_rows = min(max(requested_rows, 1), settings.max_rows)
     started = time.monotonic()
     with _connect(request, settings) as connection:
         cursor = connection.cursor()

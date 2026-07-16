@@ -8,8 +8,10 @@ Ossie metadata into models the analysis agent can use.
 ## What it solves
 
 A user may know the business question but not the correct table, join, or metric expression. The
-agent uses a small OSI model to resolve those details, prepares inspectable Snowflake SQL, runs it
-with browser SSO and a read-only role, checks the result shape, and returns a reproducible answer.
+agent prefers a shared OSI definition, can calculate an explicitly unpromoted metric from promoted
+fields, and can use validated text-to-SQL over promoted or explicitly allowlisted sources. It runs
+inspectable SQL with browser SSO and a read-only role, checks the result shape, and returns a
+reproducible answer.
 
 Typical request:
 
@@ -18,7 +20,8 @@ Typical request:
 
 The agent is designed to provide:
 
-- consistent metric and dimension definitions from `semantic/models/`
+- consistent metric and dimension definitions from `semantic/models/` when available
+- visibly labeled derived and ad hoc metrics when a shared metric does not cover the question
 - explicit, bounded, read-only Snowflake queries
 - result checks before interpretation
 - direct answers with query details and useful caveats
@@ -52,8 +55,9 @@ definition review. It is not a standalone business portal, hosted service, or MC
    `data-analytics` agent.
 2. Ask a scoped business question with the metric, population, dimensions, filters, time range,
    and desired output.
-3. Review the displayed metric, population, dimensions, filters, period, expected result grain,
-   semantic model, and requested output. The agent proceeds when these are unambiguous.
+3. Review the displayed metric or formula, population, dimensions, filters, period, expected result
+   grain, source mode and sources, and requested output. The agent proceeds when these are
+   unambiguous.
 4. Confirm the displayed non-secret Snowflake context before the first connection. The agent then
    uses browser SSO, validated read-only SQL, bounded execution, and result checks.
 5. Ask for a chart or self-contained HTML report only after the analytical result is validated.
@@ -66,6 +70,11 @@ Example trigger:
 If the required model is not yet in `semantic/models/`, first ask the agent to convert and review
 the BI semantic export. For Tableau, the normal input is a `.tds` datasource like
 `examples/tableau/world.tds`, together with a source map and, when needed, a field map.
+
+When a promoted model contains the needed fields but not the requested metric, the agent may use a
+`derived_metrics` expression without changing the model. When other data is needed, add the fully
+qualified Snowflake object to `access.allowed_objects`; the ad hoc result remains unpromoted and
+must show its formula and assumptions.
 
 See [User workflow](docs/WORKFLOW.md) for first-time setup, trigger options, prompt templates, the
 Tableau `.tds` onboarding path, and expected responses.
@@ -173,7 +182,7 @@ uv run mypy data_agent
 Complete typed-request examples are in
 [User workflow](docs/WORKFLOW.md#typed-command-examples).
 Runnable request files for search, compile, validation, analysis, and competency tests are also
-available under `examples/`.
+available under `examples/`, including model-backed derived and allowlisted ad hoc metric examples.
 
 The Snowflake connector is optional for the offline examples. The implementation and its current
 boundaries are described in [Design](docs/DESIGN.md).

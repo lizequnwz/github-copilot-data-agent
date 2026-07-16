@@ -3,14 +3,14 @@
   "diagram_type": "workflow",
   "meta": {
     "title": "Ask Data: Business Question to Validated Answer",
-    "subtitle": "Interpretation, semantic compilation, bounded Snowflake execution, and reproducible reporting",
+    "subtitle": "Promoted, derived, or allowlisted analysis with bounded Snowflake execution and reproducible reporting",
     "output": "docs/diagrams/data-question-workflow.html",
     "animation": "none"
   },
   "lanes": [
     { "id": "user", "label": "Business user" },
     { "id": "agent", "label": "Data agent" },
-    { "id": "semantic", "label": "Promoted semantic model" },
+    { "id": "semantic", "label": "Approved semantic sources" },
     { "id": "snowflake", "label": "Read-only Snowflake" },
     { "id": "result", "label": "Validated result" },
     { "id": "exceptions", "label": "Clarification or model enhancement", "variant": "exception" }
@@ -54,17 +54,17 @@
       "lane": "semantic",
       "col": 2,
       "type": "database",
-      "label": "Resolve model",
-      "sublabel": "definitions + joins",
-      "tag": "semantic/models"
+      "label": "Resolve source",
+      "sublabel": "promoted / derived / ad hoc",
+      "tag": "approved objects"
     },
     {
       "id": "compile_validate",
       "lane": "agent",
       "col": 3,
       "type": "security",
-      "label": "Compile plan",
-      "sublabel": "time / filters / order",
+      "label": "Compile / validate",
+      "sublabel": "formula / filters / order",
       "tag": "validate SQL"
     },
     {
@@ -145,7 +145,7 @@
       "dot": "cyan",
       "title": "Interpretation contract",
       "items": [
-        "Show metric, population, dimensions, filters, period, expected result grain, model, and output",
+        "Show metric or formula, population, dimensions, filters, period, grain, source mode, and output",
         "Proceed without another approval when business definitions are unambiguous"
       ]
     },
@@ -161,8 +161,8 @@
       "dot": "emerald",
       "title": "Inspectable answer",
       "items": [
-        "Return resolved period, semantic and result grain, model, query details, SQL, and caveats",
-        "Never bypass an unsupported semantic request with ad hoc SQL"
+        "Return period, grain, source mode, formula, query details, SQL, and caveats",
+        "Label derived and ad hoc metrics unpromoted and keep them out of shared semantics"
       ]
     }
   ]

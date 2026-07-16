@@ -1,0 +1,26 @@
+{
+  "request_id": "ad-hoc-average-order-value",
+  "analysis_mode": "ad_hoc",
+  "config_path": "snowflake_config.example.yaml",
+  "question": "What is average order value by region for completed orders?",
+  "sql": "SELECT region, SUM(gross_sales_amount) / NULLIF(COUNT(order_id), 0) AS average_order_value FROM DEMO.ANALYTICS.ORDERS WHERE status = %s GROUP BY region ORDER BY average_order_value DESC LIMIT 11",
+  "parameters": ["completed"],
+  "max_rows": 10,
+  "result_grain": ["region"],
+  "metric": {
+    "name": "average_order_value",
+    "formula": "SUM(gross_sales_amount) / NULLIF(COUNT(order_id), 0)",
+    "description": "Ad hoc gross sales divided by order count.",
+    "assumptions": ["Each non-null order ID represents one order."]
+  },
+  "interpretation": {
+    "metric": "Average order value (unpromoted)",
+    "formula": "Gross sales divided by order count",
+    "population": "Completed orders",
+    "dimensions": ["region"],
+    "filters": ["status = completed"],
+    "period": "All available dates",
+    "expected_result_grain": "One row per region",
+    "requested_output": "Table"
+  }
+}

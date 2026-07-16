@@ -50,7 +50,8 @@ table, and no active or remote content was introduced.
    formatting.
 2. Include the direct finding, definitions, methodology, and useful caveats. Include semantic
    model, period, freshness, query ID, role, and SQL when available from a live query; mark missing
-   evidence explicitly.
+   evidence explicitly. For derived or ad hoc analysis, label the metric unpromoted and include its
+   displayed formula, assumptions, source mode, and approved objects.
 3. Write the HTML under `reports/generated/` with `render-report`.
 4. Verify the generated file contains the expected title and rows, responsive viewport, skip link,
    query evidence, and chart title and text alternative when a chart is present.

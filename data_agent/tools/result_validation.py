@@ -32,9 +32,10 @@ def validate_result(request: dict[str, Any]) -> dict[str, Any]:
     warnings: list[str] = []
     checks: dict[str, Any] = {
         "non_empty": bool(rows),
+        "empty_allowed": request.get("allow_empty") is True,
         "truncated": bool(result.get("truncated", False)),
     }
-    if not rows:
+    if not rows and request.get("allow_empty") is not True:
         errors.append("result is empty")
     if result.get("truncated"):
         errors.append("result is truncated")

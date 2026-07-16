@@ -4,6 +4,9 @@ import re
 from collections import Counter
 from typing import Any, cast
 
+import sqlglot
+from sqlglot import exp
+
 from data_agent.semantic.models import SemanticError, iter_models
 
 _NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]*$")
@@ -24,6 +27,103 @@ def _snowflake_expression(item: dict[str, Any]) -> str:
             if dialect.get("dialect") == wanted and isinstance(dialect.get("expression"), str):
                 return cast(str, dialect["expression"])
     raise SemanticError(f"{item.get('name')} has no Snowflake/ANSI expression")
+
+
+def _derived_metrics(
+    value: Any,
+    fields: dict[str, tuple[dict[str, Any], dict[str, Any]]],
+    promoted_names: set[str],
+) -> list[dict[str, Any]]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise SemanticError("derived_metrics must be an array")
+    if len(value) > 20:
+        raise SemanticError("derived_metrics cannot contain more than 20 metrics")
+    result: list[dict[str, Any]] = []
+    names: set[str] = set()
+    for index, item in enumerate(value):
+        if not isinstance(item, dict):
+            raise SemanticError(f"derived metric {index} must be an object")
+        name = str(item.get("name", ""))
+        if not _NAME.fullmatch(name):
+            raise SemanticError(f"derived metric {index} requires a safe SQL name")
+        if name in promoted_names or name in names:
+            raise SemanticError(f"derived metric name is not unique: {name}")
+        expression = item.get("expression")
+        if not isinstance(expression, str) or not expression.strip():
+            raise SemanticError(f"derived metric {name} requires an expression")
+        if len(expression.encode("utf-8")) > 50_000:
+            raise SemanticError(f"derived metric expression is too large: {name}")
+        normalized, references = _compile_derived_expression(expression, fields, name)
+        assumptions = item.get("assumptions", [])
+        if not isinstance(assumptions, list) or not all(
+            isinstance(assumption, str) for assumption in assumptions
+        ):
+            raise SemanticError(f"derived metric {name} assumptions must be an array of strings")
+        description = item.get("description")
+        if not isinstance(description, str) or not description.strip():
+            raise SemanticError(f"derived metric {name} requires a description")
+        result.append(
+            {
+                "name": name,
+                "description": description.strip(),
+                "assumptions": assumptions,
+                "unpromoted": True,
+                "referenced_fields": references,
+                "expression": {
+                    "dialects": [{"dialect": "SNOWFLAKE", "expression": normalized}]
+                },
+            }
+        )
+        names.add(name)
+    return result
+
+
+def _compile_derived_expression(
+    value: str,
+    fields: dict[str, tuple[dict[str, Any], dict[str, Any]]],
+    metric_name: str,
+) -> tuple[str, list[str]]:
+    try:
+        statement = sqlglot.parse_one(f"SELECT {value}", read="snowflake")
+    except sqlglot.errors.ParseError as exc:
+        raise SemanticError(f"derived metric {metric_name} expression is invalid: {exc}") from exc
+    if not isinstance(statement, exp.Select) or len(statement.expressions) != 1:
+        raise SemanticError(f"derived metric {metric_name} must be one SQL expression")
+    projection = statement.expressions[0]
+    if projection.find(exp.Subquery) is not None or projection.find(exp.Select) is not None:
+        raise SemanticError(f"derived metric {metric_name} cannot contain a query")
+    if projection.find(exp.Star) is not None:
+        raise SemanticError(
+            f"derived metric {metric_name} must reference explicit model fields instead of *"
+        )
+    references: list[str] = []
+    replacements: dict[int, exp.Expression] = {}
+    for column in projection.find_all(exp.Column):
+        qualified = f"{column.table}.{column.name}" if column.table else column.name
+        if not column.table or qualified not in fields:
+            raise SemanticError(
+                f"derived metric {metric_name} references unknown or unqualified field: {qualified}"
+            )
+        _, field = fields[qualified]
+        try:
+            replacement = cast(
+                exp.Expression,
+                sqlglot.parse_one(_snowflake_expression(field), read="snowflake"),
+            )
+        except sqlglot.errors.ParseError as exc:
+            raise SemanticError(f"model field expression is invalid: {qualified}") from exc
+        replacements[id(column)] = replacement
+        references.append(qualified)
+
+    if not references:
+        raise SemanticError(f"derived metric {metric_name} must reference a qualified model field")
+
+    compiled = projection.transform(
+        lambda node: replacements[id(node)].copy() if id(node) in replacements else node
+    )
+    return compiled.sql(dialect="snowflake"), sorted(set(references))
 
 
 def _positive_row_limit(value: Any) -> int:
@@ -62,20 +162,25 @@ def compile_plan(document: dict[str, Any], plan: dict[str, Any]) -> dict[str, An
     model = _find(models, str(plan.get("semantic_model")), "semantic model")
     datasets = [item for item in model.get("datasets", []) if isinstance(item, dict)]
     metrics = [item for item in model.get("metrics", []) if isinstance(item, dict)]
-    metric_names = plan.get("metric_ids")
-    if not isinstance(metric_names, list) or not metric_names:
-        raise SemanticError("metric_ids must be a non-empty array")
-    metric_ids = [str(name) for name in metric_names]
-    selected_metrics = [_find(metrics, name, "metric") for name in metric_ids]
-    dimension_names = plan.get("dimensions", [])
-    if not isinstance(dimension_names, list):
-        raise SemanticError("dimensions must be an array")
-
     fields: dict[str, tuple[dict[str, Any], dict[str, Any]]] = {}
     for dataset in datasets:
         for field in dataset.get("fields", []):
             if isinstance(field, dict):
                 fields[f"{dataset.get('name')}.{field.get('name')}"] = (dataset, field)
+    derived_metrics = _derived_metrics(
+        plan.get("derived_metrics"), fields, {str(item.get("name")) for item in metrics}
+    )
+    metric_names = plan.get("metric_ids", [])
+    if not isinstance(metric_names, list):
+        raise SemanticError("metric_ids must be an array")
+    metric_ids = [str(name) for name in metric_names]
+    selected_metrics = [_find(metrics, name, "metric") for name in metric_ids] + derived_metrics
+    if not selected_metrics:
+        raise SemanticError("select at least one promoted or derived metric")
+    dimension_names = plan.get("dimensions", [])
+    if not isinstance(dimension_names, list):
+        raise SemanticError("dimensions must be an array")
+
     selected_fields: list[tuple[str, dict[str, Any], dict[str, Any]]] = []
     for name in dimension_names:
         qualified = str(name)
@@ -212,6 +317,17 @@ def compile_plan(document: dict[str, Any], plan: dict[str, Any]) -> dict[str, An
     normalized_plan = {
         "semantic_model": str(model["name"]),
         "metric_ids": metric_ids,
+        "derived_metrics": [
+            {
+                "name": metric["name"],
+                "description": metric["description"],
+                "assumptions": metric["assumptions"],
+                "expression": _snowflake_expression(metric),
+                "referenced_fields": metric["referenced_fields"],
+                "unpromoted": True,
+            }
+            for metric in derived_metrics
+        ],
         "dimensions": [str(name) for name in dimension_names],
         "filters": filters,
         "time_range": normalized_time_range,
@@ -229,4 +345,15 @@ def compile_plan(document: dict[str, Any], plan: dict[str, Any]) -> dict[str, An
         "query_limit": query_limit,
         "period": normalized_time_range,
         "normalized_plan": normalized_plan,
+        "metric_definitions": [
+            {
+                "name": str(metric["name"]),
+                "description": metric.get("description"),
+                "expression": _snowflake_expression(metric),
+                "unpromoted": bool(metric.get("unpromoted", False)),
+                "assumptions": metric.get("assumptions", []),
+            }
+            for metric in selected_metrics
+        ],
+        "analysis_mode": "derived" if derived_metrics else "promoted",
     }

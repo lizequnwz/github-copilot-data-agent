@@ -19,5 +19,7 @@ access:
   blocked_schemas:
     - "SNOWFLAKE.ACCOUNT_USAGE"
     - "RAW_PII"
+  # Ad hoc text-to-SQL may use promoted model sources plus these explicit objects.
+  # Use fully qualified DATABASE.SCHEMA.OBJECT names.
   allowed_objects: []
   allow_sensitive_sampling: false

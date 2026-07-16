@@ -17,6 +17,7 @@ from data_agent.semantic.diff import semantic_changes
 from data_agent.semantic.models import (
     SemanticError,
     load_document,
+    load_promoted_document,
     search_documents,
 )
 from data_agent.semantic.ossie import validate_osi_document
@@ -71,7 +72,7 @@ def handle_osi_search(request: dict[str, Any]) -> dict[str, Any]:
 
 
 def handle_osi_compile(request: dict[str, Any]) -> dict[str, Any]:
-    document = load_document(str(request.get("model_path")))
+    document = load_promoted_document(str(request.get("model_path")))
     plan = request.get("plan")
     if not isinstance(plan, dict):
         raise ContractError("plan must be an object")

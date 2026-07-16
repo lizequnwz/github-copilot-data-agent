@@ -8,9 +8,9 @@ The agent follows a skill and invokes local Python commands for deterministic wo
 ```text
 Business question
   -> Ask Data interpretation card and material clarification
-  -> semantic model search
-  -> structured metric/dimension/filter/time-range/order plan
-  -> Snowflake SQL compilation or preparation
+  -> promoted metric, model-backed derived metric, or allowlisted ad hoc source selection
+  -> structured semantic plan or explicitly unpromoted text-to-SQL contract
+  -> Snowflake SQL compilation and validation
   -> SQL validation and max_rows + 1 read-only execution
   -> result validation
   -> answer with semantic grain, result grain, SQL, query details, and optional report
@@ -38,7 +38,8 @@ Power BI / Tableau / JSON / YAML / neutral IR / Ossie
 | `.github/agents/data-analytics.agent.md` | Selects the relevant user workflow. |
 | `.github/skills/snowflake-analysis/` | Guides setup, semantic lookup, querying, validation, and response. |
 | `.github/skills/osi-semantic-model-builder/` | Converts BI semantic exports into OSI models. |
-| `data_agent/semantic/` | Loads, searches, validates, converts, and compiles semantic models. |
+| `data_agent/semantic/` | Loads, searches, validates, converts, and compiles promoted and derived semantic plans. |
+| `data_agent/ad_hoc.py` | Validates unpromoted text-to-SQL contracts against promoted and allowlisted sources. |
 | `ossie-main/` | Pinned official Apache Ossie schema, validator, examples, and converter guidance. |
 | `data_agent/bi/` | Extracts Power BI, Tableau, and generic metadata to neutral IR. |
 | `data_agent/tools/snowflake.py` | Connects with browser SSO and runs bounded read-only operations. |
@@ -57,8 +58,10 @@ draft passes official validation, readiness checks, competency tests, and explic
 
 ## Deliberate limits
 
-- The semantic compiler supports direct metrics, dimensions, parameterized filters, bounded time
-  ranges, selected-projection ordering, and simple join paths.
+- The semantic compiler supports promoted and request-scoped derived metrics, dimensions,
+  parameterized filters, bounded time ranges, selected-projection ordering, and simple join paths.
+- Ad hoc text-to-SQL requires explicit output aliases, formula and assumptions, positional filter
+  parameters, a `max_rows + 1` limit, and sources from promoted models or `allowed_objects`.
 - Power BI and Tableau conversion does not attempt full DAX, M, LOD, table-calculation, parameter,
   filter, or role translation.
 - Binary PBIX and packaged TWBX files must be exported or unpacked before conversion.
@@ -69,6 +72,7 @@ These boundaries are surfaced as errors or manifest review items instead of bein
 
 ## Useful safeguards
 
-Browser SSO, a configured read-only role, SQL parsing, explicit columns, parameterized values,
-query timeouts, and row/byte limits remain part of the local workflow. They keep example and
-development use predictable without requiring a separate runtime platform.
+Browser SSO, a configured read-only role, SQL parsing, approved sources, explicit columns,
+parameterized predicate values, query timeouts, and row/byte limits remain part of the local
+workflow. Derived and ad hoc metrics are labeled unpromoted and never update shared semantics
+implicitly.

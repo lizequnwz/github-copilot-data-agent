@@ -7,6 +7,7 @@ from data_agent.io import ContractError
 from data_agent.security.sql import validate_sql
 from data_agent.semantic.compiler import compile_plan
 from data_agent.tools.snowflake import _connect, load_settings
+from data_agent.tools.snowflake import _context_warnings
 
 _QUALIFIED_OBJECT = re.compile(
     r"^[A-Za-z_][A-Za-z0-9_$]*\.[A-Za-z_][A-Za-z0-9_$]*\.[A-Za-z_][A-Za-z0-9_$]*$"
@@ -25,6 +26,7 @@ def verify_semantic_model(request: dict[str, Any]) -> dict[str, Any]:
     checked_objects: list[dict[str, Any]] = []
     checked_expressions: list[dict[str, Any]] = []
     query_ids: list[str] = []
+    context_warnings: list[str] = []
 
     with _connect(request, settings) as connection:
         cursor = connection.cursor()
@@ -39,8 +41,7 @@ def verify_semantic_model(request: dict[str, Any]) -> dict[str, Any]:
             actual_context = dict(
                 zip(["user", "role", "warehouse", "database", "schema"], context_row)
             )
-            if str(actual_context["role"]).upper() != settings.role.upper():
-                raise ContractError("effective Snowflake role differs from the configured role")
+            context_warnings = _context_warnings(settings, actual_context)
 
             for model in document.get("semantic_model", []):
                 if not isinstance(model, dict):
@@ -84,6 +85,7 @@ def verify_semantic_model(request: dict[str, Any]) -> dict[str, Any]:
         "errors": errors,
         "skipped": skipped,
         "query_ids": query_ids,
+        "warnings": context_warnings,
     }
 
 
@@ -105,11 +107,6 @@ def _verify_dataset(
         )
         return
     database, schema, table = source.split(".")
-    if settings.database and database.upper() != settings.database.upper():
-        errors.append(
-            _result(dataset_name, "source", "Source database differs from configuration.")
-        )
-        return
     if schema.upper() in {str(value).upper() for value in settings.blocked_schemas}:
         errors.append(_result(dataset_name, "source", "Source schema is blocked by configuration."))
         return

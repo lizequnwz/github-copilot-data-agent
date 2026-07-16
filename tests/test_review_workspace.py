@@ -23,6 +23,7 @@ from data_agent.semantic.review_workspace import (
     _translation_info,
     compile_decisions,
     default_decisions,
+    preview_decisions,
     render_review_html,
     review_paths,
     save_draft,
@@ -176,16 +177,66 @@ class ReviewWorkspaceTests(unittest.TestCase):
                 "prefers-color-scheme:dark",
                 "Apply and validate",
                 "Download decisions",
-                "Review as",
+                "Review view",
                 "Refresh impact",
                 "object-level changes",
                 "Accept translation",
                 "Retain as reviewed unsupported",
                 "Business",
                 "Analyst",
+                "Add metric",
+                "Tables and columns",
+                "data-inline-description",
+                "drawerClose",
+                "Common aggregation",
+                "/api/preview",
             ):
                 self.assertIn(expected, document)
+            self.assertNotIn("Change note", document)
+            self.assertNotIn("Why this change?", document)
             self.assertNotIn("https://", document)
+
+    def test_preview_is_non_mutating_and_supports_multiple_new_metrics(self) -> None:
+        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+            _, paths = self._build(directory)
+            decisions = default_decisions(paths.raw)
+            evidence = {
+                "rationale": "Add owner-approved shared metrics.",
+                "evidence": [{"type": "user", "reference": "Metric owner review"}],
+                "confidence": "high",
+                "assumptions": [],
+                "intent": "add_metric",
+            }
+            for name, expression in (
+                ("order_count", "COUNT(1)"),
+                ("region_count", "COUNT(DISTINCT orders.region)"),
+            ):
+                decisions["operations"].append(
+                    {
+                        "op": "add",
+                        "path": "/semantic_model/0/metrics/-",
+                        "value": {
+                            "name": name,
+                            "description": f"Reviewed {name.replace('_', ' ')}.",
+                            "expression": {
+                                "dialects": [
+                                    {"dialect": "SNOWFLAKE", "expression": expression}
+                                ]
+                            },
+                        },
+                        **evidence,
+                    }
+                )
+
+            before = paths.raw.read_bytes()
+            result = preview_decisions(decisions, paths, metric_name="region_count")
+
+            self.assertTrue(result["validation"]["official_valid"])
+            self.assertEqual(result["compilation"]["status"], "success")
+            self.assertEqual(paths.raw.read_bytes(), before)
+            self.assertFalse(paths.draft.exists())
+            self.assertFalse(paths.patch.exists())
+            self.assertFalse(paths.decisions.exists())
 
     def test_embedded_workspace_javascript_parses(self) -> None:
         node = shutil.which("node")

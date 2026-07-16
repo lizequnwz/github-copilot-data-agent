@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from data_agent.analysis import analyze
-from data_agent.reporting.render import render_chart, render_report
+from data_agent.reporting.render import render_report
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLE = ROOT / "examples/analysis/sales-by-region.json"
@@ -23,33 +23,28 @@ def main() -> int:
     rows = result["rows"]
     region_index = columns.index("region")
     sales_index = columns.index("gross_sales")
-    chart = render_chart(
-        {
-            "request_id": "offline-sales-chart",
-            "spec": {
-                "type": "bar",
-                "title": "Completed-order gross sales by region",
-                "unit": "USD, May–June 2026",
-                "alt_text": (
-                    "Completed-order gross sales by region for May and June 2026. "
-                    "East leads at $128,000, followed by West at $104,500 and Central at $87,250."
-                ),
-                "value_format": {
-                    "style": "currency",
-                    "currency": "USD",
-                    "decimals": 0,
-                    "compact": True,
-                },
-                "data": [{"label": row[region_index], "value": row[sales_index]} for row in rows],
-            },
-        }
-    )
+    chart_data = [{"label": row[region_index], "value": row[sales_index]} for row in rows]
     report = render_report(
         {
             "request_id": "offline-sales-report",
             "output_path": str(ROOT / "reports/generated/demo-sales-analysis.html"),
             "validation": analysis["result_validation"],
             "summary": request["answer"],
+            "insights": [
+                {
+                    "title": "East leads the period",
+                    "finding": "East is the largest completed-order gross-sales region.",
+                    "evidence": "$128,000 in East versus $104,500 in West and $87,250 in Central.",
+                    "why_it_matters": "East contributes 40% of the displayed regional total.",
+                    "caveat": "This is an offline synthetic fixture, not a live commercial result.",
+                },
+                {
+                    "title": "The lead is meaningful",
+                    "finding": "East is 22.5% above the next-ranked region.",
+                    "evidence": "The East–West gap is $23,500 on a West base of $104,500.",
+                    "why_it_matters": "A ranking alone understates the size of the regional gap.",
+                },
+            ],
             "question": request["question"],
             "interpretation": {
                 "metric": "Gross sales",
@@ -80,8 +75,40 @@ def main() -> int:
                     "decimals": 0,
                 }
             },
-            "chart_svg": chart["svg"],
-            "chart_heading": "Regional contribution",
+            "charts": [
+                {
+                    "heading": "Regional comparison",
+                    "takeaway": "East leads West by $23,500 and Central by $40,750.",
+                    "spec": {
+                        "type": "bar",
+                        "title": "Completed-order gross sales by region",
+                        "unit": "USD, May–June 2026",
+                        "value_format": {
+                            "style": "currency",
+                            "currency": "USD",
+                            "decimals": 0,
+                            "compact": True,
+                        },
+                        "data": chart_data,
+                    },
+                },
+                {
+                    "heading": "Contribution to total",
+                    "takeaway": "The three regions add to $319,750, with East contributing first.",
+                    "spec": {
+                        "type": "waterfall",
+                        "title": "Regional contributions to completed-order gross sales",
+                        "unit": "USD, May–June 2026",
+                        "value_format": {
+                            "style": "currency",
+                            "currency": "USD",
+                            "decimals": 0,
+                            "compact": True,
+                        },
+                        "data": chart_data,
+                    },
+                },
+            ],
             "definitions": request["definitions"],
             "methodology": (
                 "Resolve the shared gross_sales metric from demo_sales, filter to completed orders, "

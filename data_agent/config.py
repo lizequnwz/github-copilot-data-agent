@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -12,8 +13,8 @@ class Settings:
     account: str | None
     user: str | None
     authenticator: str
-    role: str
-    warehouse: str
+    role: str | None
+    warehouse: str | None
     database: str | None
     schema: str | None
     query_tag: str
@@ -23,6 +24,7 @@ class Settings:
     blocked_schemas: tuple[str, ...]
     allowed_objects: tuple[str, ...]
     allow_sensitive_sampling: bool
+    oauth_token_env: str = "SNOWFLAKE_OAUTH_TOKEN"
 
     @classmethod
     def from_file(cls, path: str | Path = "snowflake_config.yaml") -> "Settings":
@@ -38,9 +40,9 @@ class Settings:
         return cls(
             account=_optional_string(sf.get("account")),
             user=_optional_string(sf.get("user")),
-            authenticator=str(sf.get("authenticator", "externalbrowser")),
-            role=str(sf.get("role", "DATA_AGENT_ANALYST_READONLY")),
-            warehouse=str(sf.get("warehouse", "DATA_AGENT_WH")),
+            authenticator=str(sf.get("authenticator", "externalbrowser")).strip().casefold(),
+            role=_optional_string(sf.get("role")),
+            warehouse=_optional_string(sf.get("warehouse")),
             database=_optional_string(sf.get("database")),
             schema=_optional_string(sf.get("schema")),
             query_tag=str(sf.get("query_tag", "copilot_data_agent")),
@@ -50,16 +52,25 @@ class Settings:
             blocked_schemas=tuple(str(v).upper() for v in access.get("blocked_schemas", [])),
             allowed_objects=tuple(str(v).upper() for v in access.get("allowed_objects", [])),
             allow_sensitive_sampling=bool(access.get("allow_sensitive_sampling", False)),
+            oauth_token_env=str(
+                sf.get("oauth_token_env", "SNOWFLAKE_OAUTH_TOKEN")
+            ).strip(),
         )
 
     def readiness_errors(self) -> list[str]:
         fields = {
             "snowflake.account": self.account,
             "snowflake.user": self.user,
-            "snowflake.database": self.database,
-            "snowflake.schema": self.schema,
         }
-        return [name for name, value in fields.items() if not value or "REPLACE_WITH" in value]
+        errors = [name for name, value in fields.items() if not value or "REPLACE_WITH" in value]
+        if self.authenticator not in {"externalbrowser", "oauth"}:
+            errors.append("snowflake.authenticator must be externalbrowser or oauth")
+        if self.authenticator == "oauth":
+            if not self.oauth_token_env:
+                errors.append("snowflake.oauth_token_env must name an environment variable")
+            elif not os.environ.get(self.oauth_token_env):
+                errors.append(f"environment variable {self.oauth_token_env} is not set")
+        return errors
 
     def public_context(self) -> dict[str, str | None]:
         return {
@@ -70,6 +81,17 @@ class Settings:
             "warehouse": self.warehouse,
             "database": self.database,
             "schema": self.schema,
+        }
+
+    def public_authentication(self) -> dict[str, str | bool | None]:
+        """Return authentication readiness without ever exposing credential material."""
+
+        return {
+            "mode": self.authenticator,
+            "token_env": self.oauth_token_env if self.authenticator == "oauth" else None,
+            "token_available": (
+                bool(os.environ.get(self.oauth_token_env)) if self.authenticator == "oauth" else None
+            ),
         }
 
 

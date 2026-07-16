@@ -2,19 +2,32 @@
   "request_id": "render-demo-sales-chart",
   "spec": {
     "type": "bar",
-    "title": "Completed-order gross sales by region",
+    "title": "Completed-order gross sales versus plan by region",
     "unit": "USD",
-    "alt_text": "East has the highest gross sales, followed by West and Central.",
+    "alt_text": "Actual and planned gross sales for East, West, and Central. East has the highest actual sales.",
     "value_format": {
       "style": "currency",
       "currency": "USD",
       "decimals": 0,
       "compact": true
     },
-    "data": [
-      {"label": "East", "value": 128000},
-      {"label": "West", "value": 104500},
-      {"label": "Central", "value": 87250}
+    "series": [
+      {
+        "name": "Actual",
+        "data": [
+          {"label": "East", "value": 128000},
+          {"label": "West", "value": 104500},
+          {"label": "Central", "value": 87250}
+        ]
+      },
+      {
+        "name": "Plan",
+        "data": [
+          {"label": "East", "value": 120000},
+          {"label": "West", "value": 100000},
+          {"label": "Central", "value": 90000}
+        ]
+      }
     ]
   }
 }

@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from data_agent.io import ContractError
 from data_agent.reporting.render import render_chart, render_report
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -115,6 +116,117 @@ class ReportingTests(unittest.TestCase):
             self.assertIn("Show normalized semantic plan", document)
             self.assertIn("Complete result", document)
             self.assertNotIn('fill="#ffffff"', chart["svg"])
+
+    def test_multi_series_and_waterfall_charts_are_accessible(self) -> None:
+        line = render_chart(
+            {
+                "request_id": "series",
+                "spec": {
+                    "type": "line",
+                    "title": "Actual and plan",
+                    "series": [
+                        {
+                            "name": "Actual",
+                            "data": [
+                                {"label": "May", "value": 100},
+                                {"label": "June", "value": 120},
+                            ],
+                        },
+                        {
+                            "name": "Plan",
+                            "data": [
+                                {"label": "May", "value": 95},
+                                {"label": "June", "value": 110},
+                            ],
+                        },
+                    ],
+                },
+            }
+        )
+        self.assertIn('data-series-toggle="0"', line["svg"])
+        self.assertIn('data-chart-point', line["svg"])
+        self.assertIn('tabindex="0"', line["svg"])
+        self.assertIn('stroke-dasharray', line["svg"])
+
+        waterfall = render_chart(
+            {
+                "request_id": "waterfall",
+                "spec": {
+                    "type": "waterfall",
+                    "title": "Revenue bridge",
+                    "data": [
+                        {"label": "New", "value": 30},
+                        {"label": "Churn", "value": -10},
+                        {"label": "Expansion", "value": 8},
+                    ],
+                },
+            }
+        )
+        self.assertIn("running total", waterfall["svg"])
+
+    def test_structured_insights_charts_and_table_interactions(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="reports-") as directory:
+            output = Path(directory) / "reports" / "interactive.html"
+            result = render_report(
+                {
+                    "request_id": "interactive",
+                    "output_path": str(output),
+                    "validation": {"status": "pass"},
+                    "summary": "East leads the validated result.",
+                    "columns": ["region", "sales"],
+                    "rows": [["East", 120], ["West", 90]],
+                    "insights": [
+                        {
+                            "title": "Concentration",
+                            "finding": "East contributes the most sales.",
+                            "evidence": "East is 33% above West ($120 versus $90).",
+                            "why_it_matters": "Regional planning should account for the gap.",
+                            "caveat": "The fixture contains two regions.",
+                        }
+                    ],
+                    "charts": [
+                        {
+                            "heading": "Regional comparison",
+                            "takeaway": "East leads West by $30.",
+                            "spec": {
+                                "type": "bar",
+                                "title": "Sales by region",
+                                "data": [
+                                    {"label": "East", "value": 120},
+                                    {"label": "West", "value": 90},
+                                ],
+                            },
+                        }
+                    ],
+                    "metadata": {"title": "Interactive sales report", "truncated": False},
+                }
+            )
+            document = output.read_text(encoding="utf-8")
+
+        self.assertEqual(result["status"], "success")
+        self.assertIn("What the evidence says", document)
+        self.assertIn("Regional planning should account for the gap", document)
+        self.assertIn('data-chart-container', document)
+        self.assertIn('data-reset-chart', document)
+        self.assertIn('id="tableFilter"', document)
+        self.assertIn('aria-sort="none"', document)
+        self.assertIn("toggleSeries", document)
+        self.assertNotIn("https://", document)
+
+    def test_rich_report_contract_rejects_unsupported_shapes(self) -> None:
+        with self.assertRaisesRegex(ContractError, "exactly one series"):
+            render_chart(
+                {
+                    "request_id": "invalid-waterfall",
+                    "spec": {
+                        "type": "waterfall",
+                        "series": [
+                            {"name": "A", "data": [{"label": "x", "value": 1}]},
+                            {"name": "B", "data": [{"label": "x", "value": 2}]},
+                        ],
+                    },
+                }
+            )
 
 
 if __name__ == "__main__":

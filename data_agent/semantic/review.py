@@ -179,6 +179,21 @@ def review_semantic(request: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+def preview_review_patch(
+    raw_document: dict[str, Any], patch: dict[str, Any], raw_sha: str
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Apply an audited patch in memory and validate it without writing artifacts."""
+
+    validate_patch_document(patch, raw_sha)
+    reviewed = copy.deepcopy(raw_document)
+    original_provenance = _conversion_provenance(reviewed)
+    for operation in patch["operations"]:
+        _apply_operation(reviewed, operation)
+    if _conversion_provenance(reviewed) != original_provenance:
+        raise ContractError("review patches cannot change converter provenance")
+    return reviewed, validate_osi_document(reviewed)
+
+
 def validate_patch_document(patch: dict[str, Any], raw_sha: str) -> None:
     """Validate a complete audited patch before it is persisted or applied."""
     if patch.get("patch_version") != PATCH_VERSION:

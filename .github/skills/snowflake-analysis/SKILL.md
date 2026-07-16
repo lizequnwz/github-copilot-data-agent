@@ -51,16 +51,18 @@ either `osi-compile` returns `status: success` for promoted/derived mode or `ana
 
 1. If dependencies are missing, run `uv sync --extra dev --extra snowflake`.
 2. If `snowflake_config.yaml` is missing, ask the user to copy
-   `snowflake_config.example.yaml` and fill in its non-secret values.
-3. Run `config-check`, display account, user, authenticator, role, warehouse, database, and schema,
-   and ask the user to confirm them before the first connection in the session.
+   `snowflake_config.example.yaml` and fill in its non-secret values. Use `externalbrowser` for
+   browser SSO or `oauth` with `oauth_token_env`; never place the token itself in YAML.
+3. Run `config-check`, display account, user, authentication mode, and any preferred role,
+   warehouse, database, and schema. For OAuth, display only the token environment-variable name
+   and whether it is populated. Ask the user to confirm this context before the first connection.
 4. Reuse that confirmation until one of those values changes.
 5. Run `connection-check` with the confirmed context.
 
-The connection gate passes only when `config-check` returns `status: ready`, the displayed context
-is confirmed for the current values, and `connection-check` returns `status: success` with an
-effective role matching the configured role. Report SSO failure or `context_mismatch` as blocking
-evidence.
+The connection gate passes when `config-check` returns `status: ready`, the displayed context is
+confirmed for the current values, and `connection-check` returns `status: success`. Configured
+role, warehouse, database, and schema are preferred defaults: report effective-context differences
+as warnings instead of rejecting a valid connection. Authentication failures remain blocking.
 
 ## Execution gate
 

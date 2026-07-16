@@ -1,9 +1,13 @@
 # Copy this file to snowflake_config.yaml and fill in the non-secret connection context.
-# Browser SSO opens the identity-provider login locally. Do not add passwords or tokens.
+# Use externalbrowser for SAML/browser SSO or oauth with a token environment variable.
+# Never add passwords or literal tokens to this file.
 snowflake:
   account: "REPLACE_WITH_ORG_ACCOUNT"
   user: "REPLACE_WITH_USERNAME"
   authenticator: "externalbrowser"
+  # For authenticator: oauth, export this variable before connecting.
+  oauth_token_env: "SNOWFLAKE_OAUTH_TOKEN"
+  # Optional preferred session context. Omit values to use Snowflake defaults.
   role: "DATA_AGENT_READONLY"
   warehouse: "DATA_AGENT_WH"
   database: "REPLACE_WITH_DATABASE"

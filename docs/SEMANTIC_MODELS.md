@@ -93,9 +93,13 @@ Before the workspace opens, conversion compares the deterministic raw model with
 promoted model of the same name. The manifest, command summary, and workspace show object-level
 added, removed, and changed items with `breaking`, `semantic`, or `metadata` impact.
 
-The workspace is issue-first and offers Business and Analyst views across datasets, fields,
-metrics, relationships, and AI context. Guided editors cover descriptions, synonyms, examples,
-instructions, sources, keys, relationships, dialect expressions, and translation decisions.
+The workspace opens blocking issues first when present and otherwise starts in a description-first
+Catalog. Tables group their columns and keep both description levels editable in context; related
+description edits can be reviewed and committed together, with audit metadata captured automatically
+when the user saves. Business and Analyst views progressively
+reveal metrics, relationships, and advanced properties. A dismissible drawer covers synonyms,
+examples, instructions, sources, keys, relationships, dialect expressions, and translation
+decisions, while the metric builder offers common aggregations and custom compile-previewed logic.
 Key and relationship selectors show physical source columns derived from field expressions and
 preserve existing physical references; semantic field names are reviewed separately.
 Selected translations with the same status may share one reviewed decision while emitting one
@@ -104,7 +108,8 @@ OSI constructs. Every change requires rationale, evidence, confidence, and expli
 Destructive changes require confirmation and can be undone before Apply. Structural references are
 updated for unambiguous renames; expression references that cannot be rewritten safely block Apply.
 
-Drafts auto-save under `semantic/generated/` but do not change OSI or count as review evidence.
+Committed decisions auto-save under `semantic/generated/`; half-completed drawer and inline edits
+stay in the browser until explicitly committed and never change OSI or count as review evidence.
 On Apply, Python validates the complete decisions file against the original raw SHA-256, generates
 the audited patch, protects the OSI version and converter provenance, records before/after values,
 and reruns official, readiness, and matching `semantic/tests/<model>.yaml` competency validation.

@@ -113,9 +113,11 @@ Then ask:
 
 > Check my Snowflake configuration and connect with browser SSO.
 
-The agent displays account, user, authenticator, role, warehouse, database, and schema. After you
-confirm them, browser SSO opens. The confirmation remains valid for the session unless the context
-changes.
+Use `authenticator: externalbrowser` for browser SSO. For access-token OAuth, set
+`authenticator: oauth`, name the environment variable with `oauth_token_env`, and export the token
+there. The agent displays account, user, authentication mode, token availability (never the token),
+and any preferred role, warehouse, database, and schema. After confirmation it connects, reports
+the effective context, and treats differences from configured preferences as warnings.
 
 ## Bring a semantic model from BI
 
@@ -130,10 +132,12 @@ are deliberately split:
 
 Start Semantic Setup by resolving the business domain, definition owner, intended warehouse
 sources, and questions the model must answer. In the workspace, choose Business or Analyst view.
-Normal controls cover descriptions, synonyms, example questions, AI instructions, sources, keys,
-relationships, expressions, and translation decisions. `custom_extensions` and raw JSON Pointer
-editing remain advanced-only. Selected translations with the same status can share one reviewed
-decision while still producing one audited operation per object.
+Catalog groups columns beneath their tables and keeps descriptions directly editable; related
+description edits can be reviewed and committed together without a separate change-note form; the
+workspace records the save action as audit metadata. Metrics offers common aggregation templates,
+custom expressions, and a non-writing preview. Technical properties open in a drawer whose Close,
+Cancel, and Escape paths never validate incomplete fields. `custom_extensions` and raw JSON Pointer
+editing remain advanced-only.
 
 Dataset keys and relationship columns are physical source-column identifiers. They are derived
 from simple field expressions and remain unchanged when a semantic field is renamed. Selecting

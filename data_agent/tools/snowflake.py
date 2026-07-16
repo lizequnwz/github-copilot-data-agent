@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 from datetime import date, datetime
@@ -28,12 +29,11 @@ def load_settings(request: dict[str, Any]) -> Settings:
 def config_check(request: dict[str, Any]) -> dict[str, Any]:
     settings = load_settings(request)
     errors = settings.readiness_errors()
-    if settings.authenticator != "externalbrowser":
-        errors.append("snowflake.authenticator must be externalbrowser for the preferred SSO flow")
     return envelope(
         request,
         "ready" if not errors else "configuration_required",
         configuration=settings.public_context(),
+        authentication=settings.public_authentication(),
         errors=errors,
         confirmation_required=True,
         warnings=[],
@@ -47,28 +47,32 @@ def _connect(request: dict[str, Any], settings: Settings) -> Any:
         )
     errors = settings.readiness_errors()
     if errors:
-        raise ContractError(f"Snowflake configuration has placeholders: {', '.join(errors)}")
-    if settings.authenticator != "externalbrowser":
-        raise ContractError("only externalbrowser authentication is enabled by this project")
+        raise ContractError(f"Snowflake configuration is not ready: {', '.join(errors)}")
     try:
         import snowflake.connector  # type: ignore[import-not-found]
     except ImportError as exc:
         raise ContractError("Snowflake connector missing; run uv sync --extra snowflake") from exc
-    return snowflake.connector.connect(
-        account=settings.account,
-        user=settings.user,
-        authenticator="externalbrowser",
-        role=settings.role,
-        warehouse=settings.warehouse,
-        database=settings.database,
-        schema=settings.schema,
-        login_timeout=settings.timeout_seconds,
-        network_timeout=settings.timeout_seconds,
-        session_parameters={
+    connection_parameters: dict[str, Any] = {
+        "account": settings.account,
+        "user": settings.user,
+        "authenticator": settings.authenticator,
+        "role": settings.role,
+        "warehouse": settings.warehouse,
+        "database": settings.database,
+        "schema": settings.schema,
+        "login_timeout": settings.timeout_seconds,
+        "network_timeout": settings.timeout_seconds,
+        "session_parameters": {
             "QUERY_TAG": settings.query_tag,
             "STATEMENT_TIMEOUT_IN_SECONDS": settings.timeout_seconds,
             "STATEMENT_QUEUED_TIMEOUT_IN_SECONDS": settings.timeout_seconds,
         },
+    }
+    if settings.authenticator == "oauth":
+        # readiness_errors() guarantees presence. Keep the token transient and out of public output.
+        connection_parameters["token"] = os.environ[settings.oauth_token_env]
+    return snowflake.connector.connect(
+        **{key: value for key, value in connection_parameters.items() if value is not None}
     )
 
 
@@ -87,21 +91,14 @@ def connection_check(request: dict[str, Any]) -> dict[str, Any]:
         finally:
             cursor.close()
     actual = dict(zip(["user", "role", "warehouse", "database", "schema"], row))
-    if str(actual["role"]).upper() != settings.role.upper():
-        return envelope(
-            request,
-            "context_mismatch",
-            query_id=query_id,
-            actual_context=actual,
-            warnings=["effective role differs from configured role"],
-        )
+    warnings = _context_warnings(settings, actual)
     return envelope(
         request,
         "success",
         query_id=query_id,
         actual_context=actual,
         execution_seconds=round(time.monotonic() - started, 3),
-        warnings=[],
+        warnings=warnings,
     )
 
 
@@ -165,7 +162,12 @@ def execute_readonly(request: dict[str, Any]) -> dict[str, Any]:
 def search_objects(request: dict[str, Any]) -> dict[str, Any]:
     settings = load_settings(request)
     term = require_string(request, "query")
-    database = _identifier(settings.database, "configured database")
+    requested_database = request.get("database") or settings.database
+    if not requested_database:
+        raise ContractError(
+            "search-objects requires request.database or snowflake.database in configuration"
+        )
+    database = _identifier(str(requested_database), "object-search database")
     sql = f"""SELECT TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE, COMMENT
 FROM {database}.INFORMATION_SCHEMA.TABLES
 WHERE TABLE_NAME ILIKE %s OR COMMENT ILIKE %s
@@ -303,6 +305,16 @@ def _validate_requested_object(value: str, settings: Settings) -> None:
         raise ContractError("object database must match the configured database")
     if settings.allowed_objects and value.upper() not in settings.allowed_objects:
         raise ContractError("object is not included in configured allowed_objects")
+
+
+def _context_warnings(settings: Settings, actual: dict[str, Any]) -> list[str]:
+    warnings: list[str] = []
+    for name in ("user", "role", "warehouse", "database", "schema"):
+        preferred = getattr(settings, name, None)
+        effective = actual.get(name)
+        if preferred and str(effective or "").upper() != preferred.upper():
+            warnings.append(f"effective {name} differs from configured preference")
+    return warnings
 
 
 def params_to_tuple(value: list[Any] | dict[str, Any]) -> Any:

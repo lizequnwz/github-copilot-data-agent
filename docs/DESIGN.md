@@ -42,15 +42,16 @@ Power BI / Tableau / JSON / YAML / neutral IR / Ossie
 | `data_agent/ad_hoc.py` | Validates unpromoted text-to-SQL contracts against promoted and allowlisted sources. |
 | `ossie-main/` | Pinned official Apache Ossie schema, validator, examples, and converter guidance. |
 | `data_agent/bi/` | Extracts Power BI, Tableau, and generic metadata to neutral IR. |
-| `data_agent/tools/snowflake.py` | Connects with browser SSO and runs bounded read-only operations. |
+| `data_agent/tools/snowflake.py` | Connects with browser SSO or environment-token OAuth and runs bounded read-only operations. |
 | `data_agent/security/sql.py` | Parses Snowflake SQL and rejects unsupported operations. |
 | `data_agent/tools/result_validation.py` | Checks result shape before interpretation. |
-| `data_agent/reporting/` | Creates optional SVG charts and HTML reports. |
+| `data_agent/reporting/` | Creates accessible multi-series SVG charts and interactive self-contained HTML reports. |
 
-The review workspace provides Business and Analyst views over one audited decisions artifact.
-Business reviewers work with definitions, exclusions, synonyms, questions, and translation cards;
-analysts work with sources, fields, keys, relationships, and expressions. Normal decisions use
-guided controls. Raw JSON Pointer operations remain available only as an advanced escape hatch.
+The review workspace provides Business and Analyst views over one audited decisions artifact. Its
+description-first Catalog groups columns beneath tables, batches related description evidence, and
+uses a dismissible drawer for technical detail. The guided metric builder provides common
+aggregations, custom expressions, and non-writing compile previews. Raw JSON Pointer operations
+remain available only as an advanced escape hatch.
 
 Refresh compares semantic objects instead of only file hashes. Each change is classified as
 `breaking`, `semantic`, or `metadata`. The previously promoted model remains active until the new
@@ -72,7 +73,8 @@ These boundaries are surfaced as errors or manifest review items instead of bein
 
 ## Useful safeguards
 
-Browser SSO, a configured read-only role, SQL parsing, approved sources, explicit columns,
-parameterized predicate values, query timeouts, and row/byte limits remain part of the local
-workflow. Derived and ad hoc metrics are labeled unpromoted and never update shared semantics
-implicitly.
+Browser SSO or environment-token OAuth, explicit context confirmation, SQL parsing, approved
+sources, explicit columns, parameterized predicate values, query timeouts, and row/byte limits
+remain part of the local workflow. Optional role, warehouse, database, and schema values are
+preferred defaults rather than connection blockers. Derived and ad hoc metrics are labeled
+unpromoted and never update shared semantics implicitly.

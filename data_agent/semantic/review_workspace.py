@@ -16,7 +16,13 @@ from urllib.parse import parse_qs, urlparse
 
 from data_agent.io import ContractError, write_json_atomic
 from data_agent.semantic.models import load_document
-from data_agent.semantic.review import review_semantic, sha256_text, validate_patch_document
+from data_agent.semantic.compiler import compile_plan
+from data_agent.semantic.review import (
+    preview_review_patch,
+    review_semantic,
+    sha256_text,
+    validate_patch_document,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 GENERATED_ROOT = (ROOT / "semantic/generated").resolve()
@@ -140,6 +146,40 @@ def save_draft(value: Any, paths: ReviewPaths) -> Path:
     decisions = validate_decisions(value, paths.raw)
     write_json_atomic(paths.draft, decisions)
     return paths.draft
+
+
+def preview_decisions(
+    value: Any, paths: ReviewPaths, *, metric_name: str | None = None
+) -> dict[str, Any]:
+    """Validate candidate review decisions without persisting any review artifact."""
+
+    decisions = validate_decisions(value, paths.raw)
+    raw_document = load_document(paths.raw)
+    raw_sha = str(decisions["base_model_sha256"])
+    patch = {
+        "patch_version": "1.0",
+        "base_model_sha256": raw_sha,
+        "operations": _coordinate_renames(raw_document, decisions["operations"], raw_sha),
+    }
+    reviewed, validation = preview_review_patch(raw_document, patch, raw_sha)
+    compilation: dict[str, Any] = {"status": "not_requested"}
+    if metric_name:
+        model = reviewed.get("semantic_model", [{}])[0]
+        model_name = model.get("name") if isinstance(model, dict) else None
+        compiled = compile_plan(
+            reviewed,
+            {
+                "semantic_model": model_name,
+                "metric_ids": [metric_name],
+                "dimensions": [],
+                "max_rows": 1,
+            },
+        )
+        compilation = {
+            "status": "success",
+            "sql": compiled["sql"],
+        }
+    return {"validation": validation, "compilation": compilation}
 
 
 def build_review_state(
@@ -305,6 +345,16 @@ def serve_review(
 
 
 def render_review_html(state: dict[str, Any], *, token: str = "") -> str:
+    from data_agent.semantic.review_ui import render_review_html_document
+
+    return render_review_html_document(
+        state,
+        token=token,
+        refresh_html=_refresh_summary_html(state.get("refresh")),
+    )
+
+
+def _legacy_render_review_html(state: dict[str, Any], *, token: str = "") -> str:
     serialized = json.dumps(state, ensure_ascii=False).replace("</", "<\\/")
     token_json = json.dumps(token)
     title = html.escape(str(state["model_name"]))
@@ -426,6 +476,16 @@ def _handler_for(app: ReviewApplication) -> type[BaseHTTPRequestHandler]:
                 if self.path == "/api/draft":
                     save_draft(payload.get("decisions"), app.paths)
                     self._json(HTTPStatus.OK, {"status": "saved"})
+                elif self.path == "/api/preview":
+                    metric_name = payload.get("metric_name")
+                    if metric_name is not None and not isinstance(metric_name, str):
+                        raise ContractError("metric_name must be a string")
+                    self._json(
+                        HTTPStatus.OK,
+                        preview_decisions(
+                            payload.get("decisions"), app.paths, metric_name=metric_name
+                        ),
+                    )
                 elif self.path == "/api/apply":
                     self._json(HTTPStatus.OK, app.apply(payload))
                 elif self.path == "/api/finish":

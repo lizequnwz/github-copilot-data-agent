@@ -26,8 +26,9 @@ instructions.
   population, grain, filters, assumptions, source mode, and SQL; never present an ad hoc result as a
   shared definition or promote it implicitly.
 - **Connection gate**: display and confirm the non-secret `snowflake_config.yaml` context before
-  the first connection and whenever it changes. Connect through browser SSO with the configured
-  read-only role.
+  the first connection and whenever it changes. Connect through browser SSO or environment-token
+  OAuth. Treat configured role, warehouse, database, and schema as preferred session defaults;
+  report the effective context and keep every executed statement read-only.
 - **Validation gate**: validate explicit, parameterized, bounded SQL and the returned rows before
   interpretation or reporting.
 - **Promotion gate**: create deterministic raw OSI, preserve source evidence and immutable

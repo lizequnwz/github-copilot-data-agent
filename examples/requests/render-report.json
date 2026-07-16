@@ -12,6 +12,15 @@
     "warnings": []
   },
   "summary": "East recorded the highest completed-order gross sales.",
+  "insights": [
+    {
+      "title": "East leads",
+      "finding": "East is the largest regional contributor.",
+      "evidence": "East produced $128,000, $23,500 more than West.",
+      "why_it_matters": "The regional mix is concentrated enough to warrant monitoring East separately.",
+      "caveat": "This fixture covers only the displayed period and three regions."
+    }
+  ],
   "question": "Which region drove gross sales?",
   "interpretation": {
     "metric": "Gross sales",
@@ -37,6 +46,23 @@
       "decimals": 0
     }
   },
+  "charts": [
+    {
+      "heading": "Regional comparison",
+      "takeaway": "East leads West by $23,500 and Central by $40,750.",
+      "spec": {
+        "type": "bar",
+        "title": "Completed-order gross sales by region",
+        "unit": "USD",
+        "value_format": {"style": "currency", "currency": "USD", "decimals": 0},
+        "data": [
+          {"label": "East", "value": 128000},
+          {"label": "West", "value": 104500},
+          {"label": "Central", "value": 87250}
+        ]
+      }
+    }
+  ],
   "definitions": {
     "Gross sales": "Sum of gross order amount before returns."
   },

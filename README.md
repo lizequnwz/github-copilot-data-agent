@@ -10,8 +10,8 @@ Ossie metadata into models the analysis agent can use.
 A user may know the business question but not the correct table, join, or metric expression. The
 agent prefers a shared OSI definition, can calculate an explicitly unpromoted metric from promoted
 fields, and can use validated text-to-SQL over promoted or explicitly allowlisted sources. It runs
-inspectable SQL with browser SSO and a read-only role, checks the result shape, and returns a
-reproducible answer.
+inspectable SQL with browser SSO or environment-token OAuth, checks the result shape, and returns a
+reproducible answer with the effective Snowflake context.
 
 Typical request:
 
@@ -25,7 +25,7 @@ The agent is designed to provide:
 - explicit, bounded, read-only Snowflake queries
 - result checks before interpretation
 - direct answers with query details and useful caveats
-- optional charts and self-contained HTML reports
+- optional interactive charts and self-contained HTML reports with evidence-backed insights
 - BI-to-OSI conversion for building and refreshing semantic models
 
 ## Choose your journey
@@ -34,9 +34,10 @@ The agent is designed to provide:
   and receive a validated answer with reproducible SQL.
 - **Import a Model**: provide Tableau, Power BI, generic, neutral IR, or existing Ossie metadata and
   request **Semantic Setup**.
-- **Review Definitions**: open the guided workspace as a Business or Analyst reviewer; normal
-  review does not require YAML or JSON editing.
-- **Configure Snowflake**: fill in the non-secret local context and confirm it before browser SSO.
+- **Review Definitions**: use the description-first Catalog and guided metric builder as a Business
+  or Analyst reviewer; normal review does not require YAML or JSON editing.
+- **Configure Snowflake**: choose browser SSO or environment-token OAuth, then confirm the
+  non-secret preferred context.
 
 This is an analyst-led GitHub Copilot workflow in which business stakeholders can participate in
 definition review. It is not a standalone business portal, hosted service, or MCP server.
@@ -46,8 +47,8 @@ definition review. It is not a standalone business portal, hosted service, or MC
 - Git with submodule support.
 - Python 3.11 or newer and [`uv`](https://docs.astral.sh/uv/).
 - A GitHub Copilot surface that supports repository agents and skills.
-- A local browser for semantic review and Snowflake browser SSO.
-- For live analysis, Snowflake access through the configured read-only role and warehouse.
+- A local browser for semantic review and, when selected, Snowflake browser SSO.
+- For live analysis, Snowflake access capable of running the bounded read-only queries.
 
 ## How to use it
 
@@ -58,8 +59,9 @@ definition review. It is not a standalone business portal, hosted service, or MC
 3. Review the displayed metric or formula, population, dimensions, filters, period, expected result
    grain, source mode and sources, and requested output. The agent proceeds when these are
    unambiguous.
-4. Confirm the displayed non-secret Snowflake context before the first connection. The agent then
-   uses browser SSO, validated read-only SQL, bounded execution, and result checks.
+4. Confirm the displayed non-secret Snowflake authentication mode and preferred context before the
+   first connection. The agent then uses browser SSO or OAuth, validated read-only SQL, bounded
+   execution, and result checks.
 5. Ask for a chart or self-contained HTML report only after the analytical result is validated.
 
 Example trigger:
@@ -110,16 +112,19 @@ cp snowflake_config.example.yaml snowflake_config.yaml
 uv sync --extra dev --extra snowflake
 ```
 
-Fill in the non-secret context in the local configuration file, select the `data-analytics`
-Copilot agent, and ask a data question. The agent displays the connection context for confirmation
-before the first connection and uses browser SSO.
+Fill in account and user, choose `externalbrowser` or `oauth`, and optionally provide preferred
+role, warehouse, database, and schema values. OAuth reads its access token from the environment
+variable named by `oauth_token_env`; never put a token in YAML. The agent displays this non-secret
+context for confirmation and reports effective-context differences as warnings.
 
 ## Build an OSI model from BI metadata
 
 The `osi-semantic-model-builder` skill is the model onboarding path. Its normal command creates a
-deterministic raw model and opens a local review workspace. Business users and analysts can edit
-meaning, mappings, keys, relationships, expressions, descriptions, synonyms, examples, and
-`ai_context` without editing YAML. **Apply and validate** compiles their decisions into an audited
+deterministic raw model and opens a local review workspace. The Catalog keeps table and column
+descriptions visible, related edits can share one evidence record, and the metric builder provides
+common aggregation templates plus custom expressions. The dismissible drawer contains mappings,
+keys, relationships, expressions, synonyms, examples, and `ai_context` without requiring YAML.
+**Apply and validate** compiles committed decisions into an audited
 patch, reruns the pinned official validator, and promotes only a clean model after confirmation.
 
 ```bash

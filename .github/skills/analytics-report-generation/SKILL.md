@@ -6,9 +6,15 @@ allowed-tools: ["read", "search", "edit", "execute"]
 
 # Analytics report generation
 
-Apply the validation gate from `AGENTS.md`. Before invoking a renderer, read the matching section of
-[references/render-contracts.md](references/render-contracts.md) for its exact request and success
-evidence.
+Apply the validation gate from `AGENTS.md`. Run `render-chart` and `render-report` from the
+repository root with:
+
+```bash
+uv run python -m data_agent COMMAND --input REQUEST.json --output RESPONSE.json
+```
+
+Start from `examples/requests/render-chart.json` or `examples/requests/render-report.json`. The
+Python renderers remain authoritative for request validation.
 
 ## Publication input gate
 

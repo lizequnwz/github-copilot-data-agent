@@ -1,0 +1,20 @@
+{
+  "request_id": "render-demo-sales-chart",
+  "spec": {
+    "type": "bar",
+    "title": "Completed-order gross sales by region",
+    "unit": "USD",
+    "alt_text": "East has the highest gross sales, followed by West and Central.",
+    "value_format": {
+      "style": "currency",
+      "currency": "USD",
+      "decimals": 0,
+      "compact": true
+    },
+    "data": [
+      {"label": "East", "value": 128000},
+      {"label": "West", "value": 104500},
+      {"label": "Central", "value": 87250}
+    ]
+  }
+}

@@ -26,12 +26,10 @@ def main() -> int:
         ".github/copilot-instructions.md",
         ".github/agents/data-analytics.agent.md",
         ".github/skills/snowflake-analysis/SKILL.md",
-        ".github/skills/snowflake-analysis/references/tool-contracts.md",
         ".github/skills/osi-semantic-model-builder/SKILL.md",
         ".github/skills/osi-semantic-model-builder/agents/openai.yaml",
         ".github/skills/osi-semantic-model-builder/scripts/build_model.py",
         ".github/skills/analytics-report-generation/SKILL.md",
-        ".github/skills/analytics-report-generation/references/render-contracts.md",
         ".github/workflows/ci.yml",
         "snowflake_config.example.yaml",
         "semantic/models/demo_sales.yaml",
@@ -48,6 +46,8 @@ def main() -> int:
         "examples/requests/osi-search.json",
         "examples/requests/osi-test.json",
         "examples/requests/osi-validate.json",
+        "examples/requests/render-chart.json",
+        "examples/requests/render-report.json",
         "data_agent/semantic/competency.py",
         "data_agent/semantic/diff.py",
         "scripts/demo_analysis.py",
@@ -90,6 +90,8 @@ def main() -> int:
         json.loads((ROOT / "examples/requests/osi-search.json").read_text())
         json.loads((ROOT / "examples/requests/osi-test.json").read_text())
         json.loads((ROOT / "examples/requests/osi-validate.json").read_text())
+        json.loads((ROOT / "examples/requests/render-chart.json").read_text())
+        json.loads((ROOT / "examples/requests/render-report.json").read_text())
         yaml.safe_load((ROOT / "snowflake_config.example.yaml").read_text())
         yaml.safe_load((ROOT / "semantic/tests/demo_sales.yaml").read_text())
     except Exception as exc:

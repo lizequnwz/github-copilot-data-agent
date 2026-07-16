@@ -1,0 +1,60 @@
+{
+  "request_id": "render-demo-sales-report",
+  "output_path": "reports/generated/example-sales-report.html",
+  "validation": {
+    "status": "pass",
+    "checks": {
+      "non_empty": true,
+      "truncated": false,
+      "duplicate_grain_rows": 0
+    },
+    "errors": [],
+    "warnings": []
+  },
+  "summary": "East recorded the highest completed-order gross sales.",
+  "question": "Which region drove gross sales?",
+  "interpretation": {
+    "metric": "Gross sales",
+    "population": "Completed orders",
+    "expected_result_grain": "One row per region",
+    "semantic_model": "demo_sales"
+  },
+  "validation_summary": {
+    "result": "Passed",
+    "truncated": "No",
+    "duplicate_grain_rows": 0
+  },
+  "columns": ["region", "gross_sales"],
+  "rows": [
+    ["East", 128000],
+    ["West", 104500],
+    ["Central", 87250]
+  ],
+  "column_formats": {
+    "gross_sales": {
+      "style": "currency",
+      "currency": "USD",
+      "decimals": 0
+    }
+  },
+  "definitions": {
+    "Gross sales": "Sum of gross order amount before returns."
+  },
+  "methodology": "Compile through demo_sales and validate the returned region grain.",
+  "caveats": ["Synthetic example data"],
+  "sql": "SELECT region, SUM(gross_amount) AS gross_sales FROM demo GROUP BY region",
+  "plan": {
+    "semantic_model": "demo_sales",
+    "metric_ids": ["gross_sales"],
+    "dimensions": ["orders.region"]
+  },
+  "metadata": {
+    "title": "Completed-order gross sales by region",
+    "semantic_model": "demo_sales",
+    "period": "May through June 2026",
+    "data_freshness": "synthetic example",
+    "query_id": "offline-example",
+    "role": "offline",
+    "truncated": false
+  }
+}

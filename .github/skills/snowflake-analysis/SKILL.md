@@ -6,9 +6,16 @@ allowed-tools: ["read", "search", "edit", "execute"]
 
 # Snowflake analysis
 
-Apply the semantic, connection, and validation gates from `AGENTS.md`. Before invoking a local
-helper, read the matching section of [references/tool-contracts.md](references/tool-contracts.md)
-for its exact request, success status, and evidence fields.
+Apply the semantic, connection, and validation gates from `AGENTS.md`. Run helpers from the
+repository root with:
+
+```bash
+uv run python -m data_agent COMMAND --input REQUEST.json --output RESPONSE.json
+```
+
+Start semantic requests from `examples/requests/osi-search.json` and
+`examples/requests/osi-compile.json`; use `examples/analysis/sales-by-region.json` for the complete
+offline analysis shape. The Python handlers remain authoritative for request validation.
 
 ## Choose the branch
 

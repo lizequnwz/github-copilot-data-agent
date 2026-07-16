@@ -1,13 +1,36 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
 from data_agent.reporting.render import render_chart, render_report
 
+ROOT = Path(__file__).resolve().parents[1]
+
 
 class ReportingTests(unittest.TestCase):
+    def test_runnable_request_examples(self) -> None:
+        chart_request = json.loads(
+            (ROOT / "examples/requests/render-chart.json").read_text(encoding="utf-8")
+        )
+        chart = render_chart(chart_request)
+        self.assertEqual(chart["status"], "success")
+
+        report_request = json.loads(
+            (ROOT / "examples/requests/render-report.json").read_text(encoding="utf-8")
+        )
+        with tempfile.TemporaryDirectory(prefix="reports-") as directory:
+            output = Path(directory) / "reports" / "example.html"
+            report_request["output_path"] = str(output)
+            report_request["chart_svg"] = chart["svg"]
+            report_request["chart_heading"] = "Regional comparison"
+            report = render_report(report_request)
+
+        self.assertEqual(report["status"], "success")
+        self.assertTrue(report["content_sha256"])
+
     def test_chart_and_html_report(self) -> None:
         chart = render_chart(
             {

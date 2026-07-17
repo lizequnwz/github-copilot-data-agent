@@ -7,11 +7,47 @@ from pathlib import Path
 
 from data_agent.io import ContractError
 from data_agent.reporting.render import render_chart, render_report
+from data_agent.reporting.workspace import render_analysis_workspace
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class ReportingTests(unittest.TestCase):
+    def test_exploratory_workspace_contains_markdown_notebook_and_evidence(self) -> None:
+        workspace_request = json.loads(
+            (ROOT / "examples/requests/render-workspace.json").read_text(encoding="utf-8")
+        )
+        with tempfile.TemporaryDirectory(prefix="workspace-") as directory:
+            output = Path(directory) / "reports" / "exploration"
+            workspace_request["output_dir"] = str(output)
+            result = render_analysis_workspace(workspace_request)
+            markdown = Path(result["markdown_path"]).read_text(encoding="utf-8")
+            notebook = json.loads(Path(result["notebook_path"]).read_text(encoding="utf-8"))
+
+        self.assertEqual(result["status"], "success")
+        self.assertIn("Result validation: `not_run`", markdown)
+        self.assertIn("SUM(gross_sales_amount)", markdown)
+        self.assertEqual(notebook["nbformat"], 4)
+        self.assertTrue(any(cell["cell_type"] == "code" for cell in notebook["cells"]))
+
+    def test_exploratory_report_is_allowed_and_clearly_labeled(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="reports-") as directory:
+            output = Path(directory) / "reports" / "exploratory.html"
+            result = render_report(
+                {
+                    "request_id": "exploratory-report",
+                    "output_path": str(output),
+                    "summary": "East leads in this exploratory result.",
+                    "columns": ["region", "sales"],
+                    "rows": [["East", 120], ["West", 90]],
+                    "metadata": {"title": "Exploratory sales"},
+                }
+            )
+            document = output.read_text(encoding="utf-8")
+
+        self.assertEqual(result["status"], "success")
+        self.assertIn("Exploratory · not validated", document)
+
     def test_runnable_request_examples(self) -> None:
         chart_request = json.loads(
             (ROOT / "examples/requests/render-chart.json").read_text(encoding="utf-8")

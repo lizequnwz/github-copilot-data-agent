@@ -285,9 +285,18 @@ def render_report(request: dict[str, Any]) -> dict[str, Any]:
         raise ContractError("metadata must be an object")
     metadata = dict(metadata)
     metadata.setdefault("generated_at", datetime.now(timezone.utc).isoformat())
-    validation = request.get("validation")
-    if not isinstance(validation, dict) or validation.get("status") != "pass":
-        raise ContractError("passing result checks are required")
+    validation = request.get(
+        "validation",
+        {
+            "status": "not_run",
+            "warnings": ["exploratory report; result validation was not supplied"],
+        },
+    )
+    if not isinstance(validation, dict):
+        raise ContractError("validation must be an object")
+    validation_status = str(validation.get("status", "not_run"))
+    if validation_status in {"fail", "validation_failed"}:
+        raise ContractError("reports cannot be rendered from failed result checks")
     if not metadata.get("title"):
         raise ContractError("metadata missing: title")
     summary = html.escape(require_string(request, "summary"))
@@ -340,7 +349,11 @@ def render_report(request: dict[str, Any]) -> dict[str, Any]:
     )
     question = str(request.get("question", "")).strip()
     question_html = f'<p class="question">{html.escape(question)}</p>' if question else ""
-    badges = ['<span class="badge success">Validation passed</span>']
+    badges = (
+        ['<span class="badge success">Validation passed</span>']
+        if validation_status == "pass"
+        else ['<span class="badge warning">Exploratory · not validated</span>']
+    )
     if metadata.get("data_freshness"):
         badges.append(f'<span class="badge">Data: {html.escape(str(metadata["data_freshness"]))}</span>')
     if metadata.get("period"):

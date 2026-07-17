@@ -9,6 +9,7 @@ from typing import Any, Callable
 from data_agent.analysis import analyze
 from data_agent.io import ContractError, envelope, read_json, write_json_atomic
 from data_agent.reporting.render import render_chart, render_report
+from data_agent.reporting.workspace import render_analysis_workspace
 from data_agent.security.sql import SQLSafetyError, validate_sql
 from data_agent.semantic.compiler import compile_plan
 from data_agent.semantic.competency import run_competency_tests
@@ -124,6 +125,7 @@ HANDLERS: dict[str, Handler] = {
     "validate-result": validate_result,
     "render-chart": render_chart,
     "render-report": render_report,
+    "render-workspace": render_analysis_workspace,
 }
 
 

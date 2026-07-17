@@ -1,7 +1,8 @@
-# Snowflake data agent
+# Snowflake data exploration agent
 
-Help analysts and product owners answer scoped business questions with shared OSI semantic models
-and read-only Snowflake queries. Keep the workflow direct, inspectable, and easy to run locally.
+Help analysts and product owners explore business questions quickly with read-only Snowflake SQL,
+editable notebooks, Markdown analysis records, and optional semantic models. Optimize first for a
+useful analytical loop: ask, query, inspect, visualize, refine, and share.
 
 ## Scope and routing
 
@@ -9,35 +10,34 @@ Classify end-user data-agent requests into one explicit mode. Repository enginee
 documentation, and skill maintenance use the normal engineering workflow and do not require a
 data-agent mode.
 
-- **Ask Data**: business questions, semantic planning, Snowflake execution, result validation, and
-  interpretation.
+- **Ask Data**: exploratory questions, direct or model-assisted SQL, Snowflake execution, notebook
+  iteration, interpretation, and optional validation.
 - **Semantic Setup**: semantic-model import, refresh, review, validation, and promotion.
 
 The custom agent owns mode-to-skill routing, optional output routing, and user-facing continuity.
 Each skill owns its detailed procedure; do not duplicate those steps in repository or custom-agent
 instructions.
 
-## Repository-wide gates
+## Product priorities
 
-- **Source and metric gate**: prefer business definitions and metrics from promoted models in
-  `semantic/models/`. When no promoted metric answers the question, permit either an explicitly
-  unpromoted derived metric over promoted fields and relationships or validated ad hoc SQL over
-  promoted physical sources and configured `allowed_objects`. Always expose the formula,
-  population, grain, filters, assumptions, source mode, and SQL; never present an ad hoc result as a
-  shared definition or promote it implicitly.
-- **Connection gate**: display and confirm the non-secret `snowflake_config.yaml` context before
-  the first connection and whenever it changes; explicitly running the one-command diagnostic
-  counts as confirmation for that displayed check. Connect through browser SSO or environment-token
-  OAuth. Treat configured role, warehouse, database, and schema as preferred session defaults;
-  report the effective context and keep every executed statement read-only.
-- **Validation gate**: validate explicit, parameterized, bounded SQL and the returned rows before
-  interpretation or reporting.
+- **Explore first**: direct SQL is a normal starting point. Do not require a promoted metric,
+  eight-field interpretation contract, allowlist, parameterized predicates, explicit SQL limit, or
+  result checks before helping the user investigate a question.
+- **Make work visible**: show the SQL and results and create a local Markdown/notebook workspace
+  when iteration would help. Keep the notebook editable and route reruns through the same read-only
+  execution helper.
+- **Add assurance progressively**: offer shared semantic definitions, parameterization, result-grain
+  checks, reproducible plans, and controlled reports when the question stabilizes or the user asks
+  for confidence. Clearly label exploratory, derived, and ad hoc results as unpromoted.
+- **Keep hard safety boundaries**: never expose credentials; require explicit non-secret connection
+  context confirmation; execute only parsed read-only queries; preserve query timeout, cancellation,
+  row-fetch, and result-byte protections; and never modify Snowflake data.
 - **Promotion gate**: create deterministic raw OSI, preserve source evidence and immutable
   provenance, apply audited decisions, pass official and readiness validation, and obtain explicit
   destination confirmation before promotion.
 
-The owning skills define the checkable criteria for these gates. Keep detailed steps there rather
-than repeating them in repository or custom-agent instructions.
+The owning skills define the detailed exploratory and assurance procedures. Governance is an
+available maturity step, not a prerequisite for useful analysis.
 
 ## Project boundaries
 

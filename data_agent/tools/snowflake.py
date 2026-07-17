@@ -111,16 +111,31 @@ def execute_readonly(request: dict[str, Any]) -> dict[str, Any]:
     require_parameterized = request.get("require_parameterized_predicates") is True
     if require_parameterized and not isinstance(parameters, list):
         raise ContractError("parameterized ad hoc SQL requires a parameters array")
-    allowed_objects = settings.allowed_objects
+    requested_allowed_objects = request.get("allowed_objects")
+    if requested_allowed_objects is not None:
+        if not isinstance(requested_allowed_objects, list) or not all(
+            isinstance(item, str) for item in requested_allowed_objects
+        ):
+            raise ContractError("allowed_objects must be an array of object names")
+        allowed_objects = tuple(item.upper() for item in requested_allowed_objects)
+    elif request.get("enforce_allowed_objects") is True:
+        allowed_objects = settings.allowed_objects
+    else:
+        allowed_objects = ()
     if request.get("require_approved_sources") is True:
         allowed_objects = tuple(sorted(set(allowed_objects).union(promoted_sources())))
         if not allowed_objects:
             raise ContractError(
                 "ad hoc SQL requires a promoted source or an object in access.allowed_objects"
             )
+    blocked_schemas = (
+        settings.blocked_schemas
+        if request.get("enforce_blocked_schemas") is not False
+        else ()
+    )
     validation = validate_sql(
         sql,
-        blocked_schemas=settings.blocked_schemas,
+        blocked_schemas=blocked_schemas,
         allowed_objects=allowed_objects,
         parameters=parameters if isinstance(parameters, list) else None,
         require_parameterized_predicates=require_parameterized,

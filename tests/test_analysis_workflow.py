@@ -20,6 +20,38 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class AnalysisContractTests(unittest.TestCase):
+    def test_exploratory_sql_is_flexible_and_validation_is_optional(self) -> None:
+        request = json.loads(
+            (ROOT / "examples/analysis/exploratory-sales.json").read_text()
+        )
+        response = analyze(request)
+        self.assertEqual(response["status"], "success")
+        self.assertEqual(response["analysis_mode"], "exploratory")
+        self.assertTrue(response["unpromoted"])
+        self.assertIsNone(response["query_limit"])
+        self.assertEqual(response["result_validation"]["status"], "not_run")
+        self.assertIn("status = 'completed'", response["sql"])
+
+    def test_sql_without_model_defaults_to_exploratory_mode(self) -> None:
+        response = analyze(
+            {
+                "request_id": "quick-look",
+                "sql": "SELECT CURRENT_DATE()",
+            }
+        )
+        self.assertEqual(response["status"], "planned")
+        self.assertEqual(response["analysis_mode"], "exploratory")
+
+    def test_exploratory_mode_allows_projection_wildcards(self) -> None:
+        response = analyze(
+            {
+                "request_id": "quick-look",
+                "sql": "SELECT * FROM DEMO.ANALYTICS.ORDERS",
+            }
+        )
+        self.assertEqual(response["status"], "planned")
+        self.assertEqual(response["analysis_mode"], "exploratory")
+
     def test_default_result_grain_matches_returned_alias(self) -> None:
         request = json.loads((ROOT / "examples/analysis/sales-by-region.json").read_text())
         response = analyze(request)

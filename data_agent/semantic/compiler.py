@@ -355,5 +355,7 @@ def compile_plan(document: dict[str, Any], plan: dict[str, Any]) -> dict[str, An
             }
             for metric in selected_metrics
         ],
-        "analysis_mode": "derived" if derived_metrics else "promoted",
+        "metric_source": "derived" if derived_metrics else "promoted",
+        "unpromoted": bool(derived_metrics),
+        "referenced_objects": sorted(str(dataset["source"]).upper() for dataset in used),
     }

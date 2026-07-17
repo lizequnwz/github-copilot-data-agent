@@ -1,97 +1,76 @@
 ---
 name: snowflake-analysis
-description: Analyze Snowflake questions through promoted OSI semantic models. Use for question interpretation, local connection setup, semantic planning, bounded read-only execution, result validation, metadata diagnosis, or evidence-backed interpretation.
+description: Explore Snowflake questions with direct or model-assisted read-only SQL, editable notebooks, optional validation, and evidence-backed interpretation.
 allowed-tools: ["read", "search", "edit", "execute"]
 ---
 
 # Snowflake analysis
 
-Apply the source and metric, connection, and validation gates from `AGENTS.md`. Run helpers from the
+Apply the explore-first priorities and hard safety boundaries from `AGENTS.md`. Run helpers from the
 repository root with:
 
 ```bash
 uv run python -m data_agent COMMAND --input REQUEST.json --output RESPONSE.json
 ```
 
-Start semantic requests from `examples/requests/osi-search.json` and
-`examples/requests/osi-compile.json`; use `examples/analysis/sales-by-region.json` for the complete
-offline analysis shape. The Python handlers remain authoritative for request validation.
+Use `examples/analysis/exploratory-sales.json` for the flexible SQL shape and
+`examples/requests/render-workspace.json` for the Markdown/notebook workspace. Python handlers
+remain authoritative for read-only execution and optional validation.
 
-## Choose the branch
+## Default: explore
 
-- **Answer a question**: complete every gate below.
-- **Set up or test the connection**: complete the connection gate, report its evidence, and stop.
-- **Diagnose model coverage**: complete semantic search and bounded metadata discovery, identify the
-  exact model gap, and stop without answering the business question from raw metadata.
+1. Understand the immediate question well enough to write the next useful query. Ask only when a
+   missing choice would make that query misleading.
+2. Inspect promoted models when they are likely to help, but do not block exploration when the
+   model is absent or incomplete.
+3. Write explicit read-only Snowflake SQL. Literal filters, unpromoted calculations, queries without
+   an explicit `LIMIT`, and incomplete business metadata are allowed in exploratory mode.
+4. Use `analyze` with `analysis_mode: exploratory`. A request containing SQL and no model path also
+   defaults to exploratory mode.
+5. Execute after displaying and confirming the non-secret connection context. Show the returned
+   table, query ID, effective context, truncation status, SQL, and useful observations.
+6. Use `render-workspace` when the user wants to iterate, inspect code, adjust SQL, or chart results.
+   The generated `analysis.md` is the readable record and `analysis.ipynb` is the editable workspace.
 
-## Interpretation gate
+Exploratory output is explicitly unpromoted. Do not imply that a direct-SQL formula is a shared
+business definition.
 
-1. Identify the metric, dimensions, filters, population, time range, and desired output.
-2. Search `semantic/models/` with `osi-search`, then choose the first applicable source mode:
-   - **Promoted**: use a promoted metric and the model compiler.
-   - **Derived**: when promoted fields and relationships cover the question, define an explicitly
-     unpromoted `derived_metrics` expression with a description and assumptions, then use the model
-     compiler.
-   - **Ad hoc**: when the question needs other approved data, generate explicit text-to-SQL and
-     validate it through `analyze` with `analysis_mode: ad_hoc`. Sources must be either physical
-     sources from promoted models or configured `access.allowed_objects`.
-3. For promoted or derived mode, compile a structured plan with `osi-compile`. For ad hoc mode,
-   require an explicit metric name, formula, description, assumptions, result grain, positional
-   parameters, and all eight interpretation fields before validating the proposed SQL.
-4. Show the resolved metric or formula, population, dimensions, filters, period, expected result
-   grain, source mode and sources, and requested output. Mark derived and ad hoc metrics as
-   unpromoted. Ask one focused question only when a remaining ambiguity would materially change the
-   result.
+## Connection
 
-The interpretation gate passes only when all eight displayed fields are explicit and
-either `osi-compile` returns `status: success` for promoted/derived mode or `analyze` returns
-`status: planned` for ad hoc mode, with SQL, parameters, result columns, and result grain.
+Use `uv run python scripts/check_snowflake.py` for the first connection or when configuration
+changes. It displays account, user, authentication mode, optional preferred context, OAuth
+environment-variable availability, and effective context. Running it confirms the displayed
+non-secret values for that check. Never display tokens.
 
-## Connection gate
+For structured execution, use `config-check`, show the same values, and then connect with
+`configuration_confirmed: true`. Browser SSO and environment-token OAuth are supported.
 
-1. If dependencies are missing, run `uv sync --extra dev --extra snowflake`.
-2. If `snowflake_config.yaml` is missing, ask the user to copy
-   `snowflake_config.example.yaml` and fill in its non-secret values. Use `externalbrowser` for
-   browser SSO or `oauth` with `oauth_token_env`; never place the token itself in YAML.
-3. Prefer the one-command diagnostic: `uv run python scripts/check_snowflake.py`. It displays
-   account, user, authentication mode, optional preferred context, OAuth environment-variable
-   availability, and the effective connected context. Running this explicit command confirms the
-   displayed non-secret context for the check. Never display the token value.
-4. For structured automation, use `config-check` followed by `connection-check` with
-   `configuration_confirmed: true` after displaying the same values. Reuse confirmation until one
-   of those values changes.
+## Iterate in the notebook
 
-The connection gate passes when the diagnostic reports `Status: connected`, or when `config-check`
-returns `status: ready` and `connection-check` returns `status: success` for confirmed values. Configured
-role, warehouse, database, and schema are preferred defaults: report effective-context differences
-as warnings instead of rejecting a valid connection. Authentication failures remain blocking.
+The notebook starts from saved evidence and keeps live execution opt-in. Users may edit the
+question, SQL, parameters, row-fetch target, table transformations, and charts. Rerun database work
+through `analyze`; do not create a raw Snowflake connection in notebook cells.
 
-## Execution gate
+Keep live queries read-only. Query timeouts, cancellation, fetch caps, and result-byte limits are
+operational protections rather than analytical governance and remain active.
 
-1. Use the SQL and parameters returned by `osi-compile` or validated by the ad hoc `analyze` plan.
-   Metadata may support an explicitly unpromoted calculation but does not create a shared business
-   definition.
-2. Confirm explicit projections and joins, the compiled result grain, parameterized values, and a
-   numeric `max_rows` no greater than the configured cap.
-   - Use `time_range` with `field`, inclusive `start`, exclusive `end_exclusive`, and `label`.
-   - Use `order_by` only for selected dimensions or metrics.
-   - Treat `grain` as qualified semantic identifiers and `result_grain` as returned column names.
-3. Run `validate-sql`, then `execute-readonly`.
-4. Run `validate-result` for emptiness, truncation, required columns, duplicate grain, required
-   nulls, and any known numeric ranges. Snowflake normally returns unquoted column names in
-   uppercase; validation matches those names case-insensitively to the semantic compiler's
-   lowercase aliases while preserving the returned names in query evidence.
-5. On a validation failure, explain the evidence, correct the plan or query through the owning
-   semantic path, and rerun the failed checks.
+## Add assurance when it becomes valuable
 
-The execution gate passes only when `validate-sql` reports valid read-only SQL,
-`execute-readonly` returns `status: success` with `truncated: false`, and `validate-result` returns
-`status: pass` for every requested check.
+Offer, but do not require, the following progression:
+
+- Add `result_checks` or `validate_result: true` for emptiness, truncation, grain uniqueness, nulls,
+  required columns, and numeric ranges.
+- Replace repeated direct SQL with a promoted or request-scoped derived semantic plan.
+- Use the legacy governed `ad_hoc` mode when a team explicitly wants allowlisted sources,
+  parameterized predicates, declared formula and assumptions, and a bounded query contract.
+- Promote a shared definition only through Semantic Setup.
+
+When checks run, explain failures and rerun after correction. When checks do not run, label the
+answer and report exploratory rather than withholding the analysis.
 
 ## Respond
 
-Lead with the direct answer. Then include the metric definition or ad hoc formula, source mode,
-filters, period, semantic model or approved objects, assumptions, query ID, role, SQL, and meaningful
-caveats. Mark derived and ad hoc metrics as unpromoted and mark unavailable evidence explicitly.
-Return the validated aggregate evidence to the custom agent when the requested output includes
-reporting.
+Lead with the useful finding or next experiment. Include SQL, parameters when useful, returned-row
+and truncation information, query ID and role for live work, and limitations that materially affect
+interpretation. Link the Markdown/notebook workspace when generated. Avoid governance boilerplate
+unless the user asks for validation or the work is moving toward a recurring or published metric.

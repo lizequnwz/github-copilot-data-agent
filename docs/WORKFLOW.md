@@ -11,11 +11,12 @@ Run the offline walkthrough before connecting to Snowflake:
 ```bash
 git submodule update --init --recursive
 uv sync --extra dev
-uv run python scripts/demo_analysis.py
+uv run python scripts/demo_exploration.py
 ```
 
-This uses the synthetic `demo_sales` model and writes
-`reports/generated/demo-sales-analysis.html`. It does not connect to Snowflake.
+This uses synthetic rows and writes `analysis.md` and `analysis.ipynb` under
+`reports/generated/exploratory-sales/`. It does not connect to Snowflake. The model-backed,
+validated walkthrough remains available through `scripts/demo_analysis.py`.
 
 To trigger the conversational workflow:
 
@@ -30,9 +31,9 @@ The agent first selects **Ask Data** or **Semantic Setup**, then chooses the sma
 
 ## Visual workflow guides
 
-- [Business question to validated answer](diagrams/data-question-workflow.html) shows how a scoped
-  question moves through interpretation, semantic compilation, connection confirmation, bounded
-  read-only Snowflake execution, result-grain validation, and reporting.
+- [Business question to validated answer](diagrams/data-question-workflow.html) shows the optional
+  assurance path after an exploration has stabilized: semantic compilation, connection
+  confirmation, bounded execution, result-grain validation, and reporting.
 - [Semantic layer creation and review](diagrams/semantic-layer-review.html) shows the normal BI
   intake, deterministic conversion, object-level refresh impact, parallel Business and Analyst
   views, audited decisions, competency-gated validation, and promotion path.
@@ -42,63 +43,51 @@ Archify sources live beside them as
 [`data-question-workflow.workflow.json`](diagrams/data-question-workflow.workflow.json) and
 [`semantic-layer-review.workflow.json`](diagrams/semantic-layer-review.workflow.json).
 
-## Ask a data question
+## Explore a data question
 
 Select the `data-analytics` Copilot agent and provide the business question in ordinary language:
 
-> Compare gross sales by region for the last two complete months. Use the shared definition,
-> explain any assumptions, and show the SQL.
+> Explore completed-order sales by region. Show the SQL and create a notebook so I can adjust it.
 
-The most useful request includes:
+Users may start with:
 
-- metric or business outcome
-- population or scope
-- dimensions or comparison
-- filters
-- time range
-- desired output, such as an answer, table, chart, or report
+- a question or hypothesis;
+- partial or complete SQL;
+- one or more table names;
+- a request to profile, compare, trend, segment, or visualize data.
 
-The agent searches `semantic/models/`, asks only material clarification questions, and selects a
-promoted metric when available. If no promoted metric fits, it may calculate an explicitly
-unpromoted metric from promoted fields or validate ad hoc text-to-SQL over promoted physical
-sources and configured `access.allowed_objects`. It confirms Snowflake context before its first
-connection, validates and runs a bounded query, checks the result, and leads with the answer.
+The agent asks only what is needed to make the next query useful. It may inspect
+`semantic/models/`, but direct SQL does not require model coverage, formula metadata, an object
+allowlist, parameterized predicates, a declared result grain, or an explicit SQL `LIMIT`.
 
 ```text
-Metric or explicit formula
-Population
-Dimensions
-Filters
-Period
-Expected result grain
-Source mode and sources
-Requested output
+Question or hypothesis
+Next useful read-only SQL query
+Result table and query details
+Observation, chart, or follow-up experiment
+Optional Markdown/notebook workspace
 ```
 
-Promoted and derived structured plans support explicit filters, an
-inclusive-start/exclusive-end `time_range`, and `order_by` on selected dimensions or metrics.
-Derived metrics provide `name`, `description`, `expression`, and `assumptions` and are not written
-back to the model. Ad hoc requests provide explicit SQL, positional parameters, metric metadata,
-all eight interpretation fields, and `LIMIT max_rows + 1`; their physical sources must be promoted
-or allowlisted. Responses preserve qualified semantic `grain` when applicable and separately
-report returned-column `result_grain`, `result_columns`, `max_rows`, and the extra-row `query_limit`
-used to detect truncation. Snowflake normally returns unquoted aliases in uppercase even when the
-generated SQL uses lowercase identifiers; result checks therefore match column names
-case-insensitively and preserve the returned names for query evidence.
+SQL-only requests default to `analysis_mode: exploratory`. They remain explicitly unpromoted.
+Snowflake execution still uses parsed read-only statements, confirmed non-secret connection
+context, query timeouts, cancellation support, and local fetch/byte protections.
 
 For a live query, expect:
 
 ```text
-Answer
-Definition and grain
-Filters and time range
-Source mode, semantic model or approved objects
+Finding or next experiment
 Query ID and role
 SQL
-Caveats or follow-up questions
+Returned rows and truncation status
+Useful caveats or follow-up questions
+Markdown/notebook links when generated
 ```
 
-Derived and ad hoc answers also identify the formula, assumptions, and unpromoted status.
+Exploratory results return `result_validation.status: not_run` by default. Add
+`validate_result: true` or explicit `result_checks` when assurance becomes useful. Teams may then
+move stable logic to a derived metric, a promoted semantic plan, or the governed ad hoc contract.
+See [Exploratory analysis workspace](EXPLORATORY_ANALYSIS.md) for the complete notebook and
+progressive-validation workflow.
 
 ## First connection
 
@@ -232,16 +221,35 @@ explicit `--descriptor` path.
 
 ## Request a report
 
-Start with a validated analytical result, then ask:
+Ask at any point:
 
 > Turn this result into a bar chart and a self-contained HTML report.
 
 Reports are written under `reports/generated/`. Query details are included when the result came
-from Snowflake; offline examples use clearly labeled synthetic details.
+from Snowflake; offline examples use clearly labeled synthetic details. Reports without passing
+result checks are visibly labeled **Exploratory · not validated**.
 
 ## Typed command examples
 
 All commands use the same `--input REQUEST.json --output RESPONSE.json` contract.
+
+Run a flexible SQL exploration:
+
+```bash
+uv run python -m data_agent analyze \
+  --input examples/analysis/exploratory-sales.json \
+  --output /tmp/exploratory-sales.response.json
+```
+
+Generate its Markdown and notebook workspace:
+
+```bash
+uv run python -m data_agent render-workspace \
+  --input examples/requests/render-workspace.json \
+  --output /tmp/render-workspace.response.json
+```
+
+The remaining examples show optional semantic, validation, and promotion paths.
 
 Search promoted semantics:
 

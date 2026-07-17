@@ -119,6 +119,15 @@ there. The agent displays account, user, authentication mode, token availability
 and any preferred role, warehouse, database, and schema. After confirmation it connects, reports
 the effective context, and treats differences from configured preferences as warnings.
 
+For a direct local check, run:
+
+```bash
+uv run python scripts/check_snowflake.py
+```
+
+The explicit command displays the non-secret preferences before connecting and reports one concise
+connected, configuration-required, or connection-failed result.
+
 ## Bring a semantic model from BI
 
 Semantic-layer creation and refresh use the browser review workspace by default. Responsibilities
@@ -132,12 +141,14 @@ are deliberately split:
 
 Start Semantic Setup by resolving the business domain, definition owner, intended warehouse
 sources, and questions the model must answer. In the workspace, choose Business or Analyst view.
-Catalog groups columns beneath their tables and keeps descriptions directly editable; related
-description edits can be reviewed and committed together without a separate change-note form; the
-workspace records the save action as audit metadata. Metrics offers common aggregation templates,
-custom expressions, and a non-writing preview. Technical properties open in a drawer whose Close,
-Cancel, and Escape paths never validate incomplete fields. `custom_extensions` and raw JSON Pointer
-editing remain advanced-only.
+Navigation stays limited to Catalog, Metrics, and Advanced. Catalog groups columns beneath their
+tables, shows completeness, and offers a next-missing queue. A persistent bar saves related
+description edits directly and keeps Undo and Discard visible; the workspace records the save
+action as audit metadata. Metrics shows common aggregation templates first, with custom
+expressions, dialect, synonyms, and examples disclosed only when requested. Technical properties
+open in a drawer whose Close, Cancel, and Escape paths never validate incomplete fields.
+Relationships, model status, `custom_extensions`, and raw JSON Pointer editing remain under
+Advanced.
 
 Dataset keys and relationship columns are physical source-column identifiers. They are derived
 from simple field expressions and remain unchanged when a semantic field is renamed. Selecting

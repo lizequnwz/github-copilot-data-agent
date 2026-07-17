@@ -53,14 +53,16 @@ either `osi-compile` returns `status: success` for promoted/derived mode or `ana
 2. If `snowflake_config.yaml` is missing, ask the user to copy
    `snowflake_config.example.yaml` and fill in its non-secret values. Use `externalbrowser` for
    browser SSO or `oauth` with `oauth_token_env`; never place the token itself in YAML.
-3. Run `config-check`, display account, user, authentication mode, and any preferred role,
-   warehouse, database, and schema. For OAuth, display only the token environment-variable name
-   and whether it is populated. Ask the user to confirm this context before the first connection.
-4. Reuse that confirmation until one of those values changes.
-5. Run `connection-check` with the confirmed context.
+3. Prefer the one-command diagnostic: `uv run python scripts/check_snowflake.py`. It displays
+   account, user, authentication mode, optional preferred context, OAuth environment-variable
+   availability, and the effective connected context. Running this explicit command confirms the
+   displayed non-secret context for the check. Never display the token value.
+4. For structured automation, use `config-check` followed by `connection-check` with
+   `configuration_confirmed: true` after displaying the same values. Reuse confirmation until one
+   of those values changes.
 
-The connection gate passes when `config-check` returns `status: ready`, the displayed context is
-confirmed for the current values, and `connection-check` returns `status: success`. Configured
+The connection gate passes when the diagnostic reports `Status: connected`, or when `config-check`
+returns `status: ready` and `connection-check` returns `status: success` for confirmed values. Configured
 role, warehouse, database, and schema are preferred defaults: report effective-context differences
 as warnings instead of rejecting a valid connection. Authentication failures remain blocking.
 

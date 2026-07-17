@@ -75,18 +75,21 @@ uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py S
 
 1. Lead with blocking issues. Ask business users for meaning, exclusions, synonyms, and expected
    questions; ask analysts for mappings, keys, relationships, grain, and expressions.
-2. Select Business or Analyst review mode. Use Catalog to review table and column descriptions in
-   context and commit related description edits together. Use the drawer for
+2. Select Business or Analyst review mode. Work through Catalog, Metrics, and Advanced. Use the
+   Catalog completeness summary and next-missing control to review table and column descriptions,
+   then save related edits directly from the persistent change bar. Undo and Discard remain visible.
+   Use the drawer for
    advanced properties; Close, Cancel, and Escape discard or confirm only unsaved drawer edits and
    never require incomplete fields. Add metrics with the guided aggregation templates or custom
-   expression mode, then use the non-writing preview before saving the draft. The workspace records
+   expression mode under progressive disclosure, then use the non-writing preview before saving the
+   draft. The workspace records
    the user's save action as automatic audit metadata; reviewers do not fill a separate change-note
    form.
    Key and relationship selectors use physical source-column identifiers, not semantic field
    names. A semantic field rename must not rewrite those physical references.
    Raw JSON operations are advanced-only. Never alter converter provenance.
 3. Select **Apply and validate** and confirm the proposed promotion destination. The backend
-   compiles the complete decisions artifact into the audited patch and applies it deterministically.
+   compiles the single review draft into an in-memory audited patch and applies it deterministically.
 4. The applier writes `<model>.osi.yaml`, reruns official and readiness validation, records the
    complete before/after audit, runs `semantic/tests/<model>.yaml` when present, and promotes only a
    clean result to `semantic/models/`.

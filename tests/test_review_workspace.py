@@ -109,8 +109,6 @@ class ReviewWorkspaceTests(unittest.TestCase):
             paths_by_operation = {item["path"]: item for item in patch["operations"]}
             self.assertNotIn("/semantic_model/0/datasets/0/primary_key", paths_by_operation)
             self.assertNotIn("intent", patch["operations"][0])
-            self.assertTrue(paths.decisions.is_file())
-            self.assertTrue(paths.patch.is_file())
 
     def test_dataset_rename_requires_explicit_expression_correction(self) -> None:
         with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
@@ -150,9 +148,10 @@ class ReviewWorkspaceTests(unittest.TestCase):
                 applied = app.apply({"decisions": decisions, "confirm_promote": True})
             self.assertTrue(applied["result"]["clean"])
             self.assertTrue(applied["result"]["promoted"])
-            self.assertTrue(paths.decisions.is_file())
-            self.assertTrue(paths.patch.is_file())
+            self.assertTrue(paths.draft.is_file())
             self.assertTrue(paths.html.is_file())
+            manifest = json.loads(paths.manifest.read_text(encoding="utf-8"))
+            self.assertEqual(manifest["review"]["patch_source"], "inline_review_draft")
 
     def test_draft_and_static_workspace_are_accessible_and_non_mutating(self) -> None:
         with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
@@ -176,7 +175,7 @@ class ReviewWorkspaceTests(unittest.TestCase):
                 "prefers-reduced-motion",
                 "prefers-color-scheme:dark",
                 "Apply and validate",
-                "Download decisions",
+                "Download draft",
                 "Review view",
                 "Refresh impact",
                 "object-level changes",
@@ -188,10 +187,17 @@ class ReviewWorkspaceTests(unittest.TestCase):
                 "Tables and columns",
                 "data-inline-description",
                 "drawerClose",
-                "Common aggregation",
+                "Use the aggregation above",
                 "/api/preview",
+                "Next missing description",
+                "Undo last",
+                "Discard all",
+                "Optional business context",
+                "Custom expression and dialect",
             ):
                 self.assertIn(expected, document)
+            self.assertIn("const sections=['catalog','metrics','advanced']", document)
+            self.assertNotIn("_legacy_render_review_html", document)
             self.assertNotIn("Change note", document)
             self.assertNotIn("Why this change?", document)
             self.assertNotIn("https://", document)
@@ -235,8 +241,6 @@ class ReviewWorkspaceTests(unittest.TestCase):
             self.assertEqual(result["compilation"]["status"], "success")
             self.assertEqual(paths.raw.read_bytes(), before)
             self.assertFalse(paths.draft.exists())
-            self.assertFalse(paths.patch.exists())
-            self.assertFalse(paths.decisions.exists())
 
     def test_embedded_workspace_javascript_parses(self) -> None:
         node = shutil.which("node")

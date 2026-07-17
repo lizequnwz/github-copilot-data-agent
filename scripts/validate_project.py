@@ -52,6 +52,7 @@ def main() -> int:
         "examples/requests/render-report.json",
         "data_agent/semantic/competency.py",
         "data_agent/semantic/diff.py",
+        "scripts/check_snowflake.py",
         "scripts/demo_analysis.py",
     ]
     for item in required:

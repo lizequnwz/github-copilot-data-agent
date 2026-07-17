@@ -7,7 +7,7 @@ uses its `0.2.0.dev0` schema and validator functions.
 ## Model locations
 
 - `semantic/models/`: models searched by default during analysis.
-- `semantic/generated/`: replaceable raw, patch, final, and conversion-manifest artifacts.
+- `semantic/generated/`: replaceable raw, review draft, final, review-HTML, and manifest artifacts.
 - `ossie-main/`: pinned official schema, validator, converter guidance, examples, and license.
 
 ## Builder workflow
@@ -22,8 +22,8 @@ source export
   -> <model>.raw.osi.yaml
   -> <model>.conversion.json
   -> interactive business + analyst decisions
-  -> <model>.review.decisions.json
-  -> compiled audited review patch
+  -> <model>.review.draft.json
+  -> in-memory audited review patch
   -> deterministic patch application and revalidation
   -> per-model competency questions
   -> <model>.osi.yaml
@@ -93,25 +93,28 @@ Before the workspace opens, conversion compares the deterministic raw model with
 promoted model of the same name. The manifest, command summary, and workspace show object-level
 added, removed, and changed items with `breaking`, `semantic`, or `metadata` impact.
 
-The workspace opens blocking issues first when present and otherwise starts in a description-first
-Catalog. Tables group their columns and keep both description levels editable in context; related
-description edits can be reviewed and committed together, with audit metadata captured automatically
-when the user saves. Business and Analyst views progressively
-reveal metrics, relationships, and advanced properties. A dismissible drawer covers synonyms,
+The workspace starts in a description-first Catalog and shows blocking issues inline. Navigation is
+limited to Catalog, Metrics, and Advanced. Tables group their columns, show per-table completeness,
+and keep both description levels editable in context. A next-missing control turns incomplete
+descriptions into a predictable queue; the persistent change bar provides Save, Undo, and Discard.
+Audit metadata is captured automatically when the user saves. Business and Analyst views
+progressively reveal technical detail. A dismissible drawer covers synonyms,
 examples, instructions, sources, keys, relationships, dialect expressions, and translation
-decisions, while the metric builder offers common aggregations and custom compile-previewed logic.
+decisions, while the metric builder shows common aggregations first and keeps custom expressions,
+dialect, synonyms, and examples collapsed until requested.
 Key and relationship selectors show physical source columns derived from field expressions and
 preserve existing physical references; semantic field names are reviewed separately.
 Selected translations with the same status may share one reviewed decision while emitting one
-audited operation per object. The advanced JSON operation editor remains available for uncommon
-OSI constructs. Every change requires rationale, evidence, confidence, and explicit assumptions.
+audited operation per object. Relationships, model status, saved draft changes, and the raw JSON
+escape hatch live under Advanced. The workspace generates the operation audit record from the save
+action instead of asking reviewers to fill a separate form.
 Destructive changes require confirmation and can be undone before Apply. Structural references are
 updated for unambiguous renames; expression references that cannot be rewritten safely block Apply.
 
-Committed decisions auto-save under `semantic/generated/`; half-completed drawer and inline edits
+Committed decisions auto-save to one review draft under `semantic/generated/`; half-completed drawer and inline edits
 stay in the browser until explicitly committed and never change OSI or count as review evidence.
-On Apply, Python validates the complete decisions file against the original raw SHA-256, generates
-the audited patch, protects the OSI version and converter provenance, records before/after values,
+On Apply, Python validates the complete draft against the original raw SHA-256, generates the
+audited patch in memory, protects the OSI version and converter provenance, records before/after values,
 and reruns official, readiness, and matching `semantic/tests/<model>.yaml` competency validation.
 The workspace retains failed edits and displays the recovery action. A clean model is promoted only
 after the destination is confirmed.
@@ -122,7 +125,7 @@ result grain, and required or excluded SQL fragments. They do not execute analyt
 The server binds exclusively to `127.0.0.1` and uses a random session token, exact Origin checks,
 JSON-only bounded requests, no CORS, and restricted artifact paths. `--review-port PORT` selects a
 port; otherwise an available port is chosen. `--no-open` prints the URL without opening a browser.
-The static `<model>.review.html` fallback can download decisions JSON for later application:
+The static `<model>.review.html` fallback can download the review draft for later application:
 
 ```bash
 uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py SOURCE \

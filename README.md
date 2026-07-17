@@ -117,15 +117,24 @@ role, warehouse, database, and schema values. OAuth reads its access token from 
 variable named by `oauth_token_env`; never put a token in YAML. The agent displays this non-secret
 context for confirmation and reports effective-context differences as warnings.
 
+Validate configuration and test the connection in one command. Running it explicitly confirms the
+displayed non-secret context for that check:
+
+```bash
+uv run python scripts/check_snowflake.py
+```
+
 ## Build an OSI model from BI metadata
 
 The `osi-semantic-model-builder` skill is the model onboarding path. Its normal command creates a
 deterministic raw model and opens a local review workspace. The Catalog keeps table and column
-descriptions visible, related edits can share one evidence record, and the metric builder provides
-common aggregation templates plus custom expressions. The dismissible drawer contains mappings,
+descriptions visible, provides per-table completeness and a next-missing queue, and saves related
+edits directly from a persistent change bar. Navigation is limited to Catalog, Metrics, and
+Advanced. The metric builder provides common aggregation templates while custom expressions and
+business context stay collapsed until needed. The dismissible drawer contains mappings,
 keys, relationships, expressions, synonyms, examples, and `ai_context` without requiring YAML.
-**Apply and validate** compiles committed decisions into an audited
-patch, reruns the pinned official validator, and promotes only a clean model after confirmation.
+**Apply and validate** compiles the saved draft into an in-memory audited patch, reruns the pinned
+official validator, and promotes only a clean model after confirmation.
 
 ```bash
 # Power BI TMDL
@@ -143,10 +152,11 @@ uv run python .github/skills/osi-semantic-model-builder/scripts/build_model.py \
   tests/fixtures/generic/sales.yaml --model-name demo_generic --review-ui
 ```
 
-The temporary server binds only to `127.0.0.1`; use `--no-open` for a headless launch. Draft,
-decisions, audited patch, final model, review HTML, and manifest artifacts stay under
-`semantic/generated/`. The static HTML can download decisions for later use with
-`--review-decisions PATH`. Manual `--review-patch` remains an advanced audit/debugging path.
+The temporary server binds only to `127.0.0.1`; use `--no-open` for a headless launch. Interactive
+review persists one draft plus the final model, review HTML, and conversion manifest under
+`semantic/generated/`; intermediate decisions and patch files are not written. The static HTML can
+download the draft for later use with `--review-decisions PATH`. Manual `--review-patch` remains an
+advanced audit/debugging path.
 Snowflake verification is optional through `--verify-snowflake` after configuration confirmation.
 The workspace provides Business and Analyst views, structured context and expression editors,
 translation decisions, relationship/key controls, and selected bulk translation review. A matching

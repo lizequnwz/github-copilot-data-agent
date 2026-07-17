@@ -47,11 +47,12 @@ Power BI / Tableau / JSON / YAML / neutral IR / Ossie
 | `data_agent/tools/result_validation.py` | Checks result shape before interpretation. |
 | `data_agent/reporting/` | Creates accessible multi-series SVG charts and interactive self-contained HTML reports. |
 
-The review workspace provides Business and Analyst views over one audited decisions artifact. Its
-description-first Catalog groups columns beneath tables, batches related description evidence, and
-uses a dismissible drawer for technical detail. The guided metric builder provides common
-aggregations, custom expressions, and non-writing compile previews. Raw JSON Pointer operations
-remain available only as an advanced escape hatch.
+The review workspace provides Business and Analyst views over one auto-audited draft. Its three
+destinations are Catalog, Metrics, and Advanced. The description-first Catalog groups columns
+beneath tables, shows completeness, offers a next-missing queue, and saves related edits from a
+persistent Undo/Discard/Save bar. The guided metric builder presents common aggregations first and
+progressively reveals optional business context, custom expressions, and dialect. Compiled patches
+remain in memory; raw JSON Pointer operations remain an advanced escape hatch.
 
 Refresh compares semantic objects instead of only file hashes. Each change is classified as
 `breaking`, `semantic`, or `metadata`. The previously promoted model remains active until the new

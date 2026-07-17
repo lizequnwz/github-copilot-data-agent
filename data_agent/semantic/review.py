@@ -40,12 +40,23 @@ def sha256_text(value: str) -> str:
 
 def review_semantic(request: dict[str, Any]) -> dict[str, Any]:
     raw_path = Path(require_string(request, "raw_model_path")).resolve()
-    patch_path = Path(require_string(request, "patch_path")).resolve()
     manifest_path = Path(str(request.get("manifest_path") or _manifest_for_raw(raw_path))).resolve()
     raw_text = raw_path.read_text(encoding="utf-8")
     raw_sha = sha256_text(raw_text)
     raw_document = load_document(raw_path)
-    patch = _load_patch(patch_path)
+    inline_patch = request.get("patch")
+    patch_path: Path | None = None
+    if inline_patch is not None:
+        if not isinstance(inline_patch, dict):
+            raise ContractError("patch must be a JSON object")
+        patch = copy.deepcopy(inline_patch)
+        patch_bytes = json.dumps(
+            patch, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+    else:
+        patch_path = Path(require_string(request, "patch_path")).resolve()
+        patch = _load_patch(patch_path)
+        patch_bytes = patch_path.read_bytes()
     validate_patch_document(patch, raw_sha)
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -145,8 +156,12 @@ def review_semantic(request: dict[str, Any]) -> dict[str, Any]:
     manifest["competency_tests"] = competency
     manifest["review"] = {
         "required": True,
-        "patch_path": _relative_or_absolute(patch_path),
-        "patch_sha256": hashlib.sha256(patch_path.read_bytes()).hexdigest(),
+        **(
+            {"patch_path": _relative_or_absolute(patch_path)}
+            if patch_path is not None
+            else {"patch_source": "inline_review_draft"}
+        ),
+        "patch_sha256": hashlib.sha256(patch_bytes).hexdigest(),
         "raw_model_sha256": raw_sha,
         "final_model_path": _relative_or_absolute(final_path),
         "final_model_sha256": final_sha,

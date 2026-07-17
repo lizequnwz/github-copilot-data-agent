@@ -1,5 +1,0 @@
-{
-  "request_id": "test-demo-sales-competencies",
-  "model_path": "semantic/models/demo_sales.yaml",
-  "cases_path": "semantic/tests/demo_sales.yaml"
-}

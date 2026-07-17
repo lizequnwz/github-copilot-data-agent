@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 
-from data_agent.semantic.ossie import (
+from data_agent.ossie import (
     EXPECTED_OSSIE_COMMIT,
     EXPECTED_SCHEMA_SHA256,
     SCHEMA,
@@ -25,11 +25,12 @@ def main() -> int:
         ".gitmodules",
         ".github/copilot-instructions.md",
         ".github/agents/data-analytics.agent.md",
-        ".github/skills/snowflake-analysis/SKILL.md",
-        ".github/skills/osi-semantic-model-builder/SKILL.md",
-        ".github/skills/osi-semantic-model-builder/agents/openai.yaml",
-        ".github/skills/osi-semantic-model-builder/scripts/build_model.py",
-        ".github/skills/analytics-report-generation/SKILL.md",
+        ".github/skills/ask-data/SKILL.md",
+        ".github/skills/ask-data/references/notebook.md",
+        ".github/skills/ask-data/references/validation.md",
+        ".github/skills/ask-data/references/reporting.md",
+        ".github/skills/semantic-setup/SKILL.md",
+        ".github/skills/semantic-setup/agents/openai.yaml",
         ".github/workflows/ci.yml",
         "snowflake_config.example.yaml",
         "semantic/models/demo_sales.yaml",
@@ -37,26 +38,24 @@ def main() -> int:
         "ossie-main/core-spec/osi-schema.json",
         "ossie-main/validation/validate.py",
         "ossie-main/LICENSE",
-        "docs/DESIGN.md",
-        "docs/EXPLORATORY_ANALYSIS.md",
-        "docs/WORKFLOW.md",
-        "docs/SEMANTIC_MODELS.md",
-        "examples/analysis/sales-by-region.json",
-        "examples/analysis/sales-by-segment.json",
-        "examples/analysis/exploratory-sales.json",
-        "examples/analysis/average-order-value-derived.json",
-        "examples/requests/osi-compile.json",
-        "examples/requests/osi-search.json",
-        "examples/requests/osi-test.json",
-        "examples/requests/osi-validate.json",
-        "examples/requests/render-chart.json",
-        "examples/requests/render-report.json",
-        "examples/requests/render-workspace.json",
-        "data_agent/semantic/competency.py",
-        "data_agent/semantic/diff.py",
-        "scripts/check_snowflake.py",
-        "scripts/demo_analysis.py",
-        "scripts/demo_exploration.py",
+        "docs/ARCHITECTURE.md",
+        "docs/ASK_DATA.md",
+        "docs/SEMANTIC_SETUP.md",
+        "examples/ask-data/exploration.json",
+        "examples/ask-data/advanced-plan.json",
+        "examples/ask-data/coverage-gap.json",
+        "examples/ask-data/report.json",
+        "examples/semantic-setup/test-model.json",
+        "examples/semantic-setup/validate-model.json",
+        "data_agent/ask/service.py",
+        "data_agent/ask/compiler.py",
+        "data_agent/ask/coverage.py",
+        "data_agent/ask/workspace.py",
+        "data_agent/ask/report.py",
+        "data_agent/setup/conversion.py",
+        "data_agent/setup/review.py",
+        "data_agent/setup/review_workspace.py",
+        "data_agent/diagnostics.py",
     ]
     for item in required:
         if not (ROOT / item).is_file():
@@ -81,26 +80,13 @@ def main() -> int:
         if not frontmatter.get("description"):
             errors.append(f"{path.relative_to(ROOT)}: description is required")
 
-    expected_skills = {
-        "analytics-report-generation",
-        "osi-semantic-model-builder",
-        "snowflake-analysis",
-    }
+    expected_skills = {"ask-data", "semantic-setup"}
     errors.extend(f"missing skill: {name}" for name in sorted(expected_skills - skill_names))
 
     try:
         json.loads(SCHEMA.read_text())
-        json.loads((ROOT / "examples/analysis/sales-by-region.json").read_text())
-        json.loads((ROOT / "examples/analysis/sales-by-segment.json").read_text())
-        json.loads((ROOT / "examples/analysis/exploratory-sales.json").read_text())
-        json.loads((ROOT / "examples/analysis/average-order-value-derived.json").read_text())
-        json.loads((ROOT / "examples/requests/osi-compile.json").read_text())
-        json.loads((ROOT / "examples/requests/osi-search.json").read_text())
-        json.loads((ROOT / "examples/requests/osi-test.json").read_text())
-        json.loads((ROOT / "examples/requests/osi-validate.json").read_text())
-        json.loads((ROOT / "examples/requests/render-chart.json").read_text())
-        json.loads((ROOT / "examples/requests/render-report.json").read_text())
-        json.loads((ROOT / "examples/requests/render-workspace.json").read_text())
+        for path in (ROOT / "examples").rglob("*.json"):
+            json.loads(path.read_text())
         yaml.safe_load((ROOT / "snowflake_config.example.yaml").read_text())
         yaml.safe_load((ROOT / "semantic/tests/demo_sales.yaml").read_text())
     except Exception as exc:

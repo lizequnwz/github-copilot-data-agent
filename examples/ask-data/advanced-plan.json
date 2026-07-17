@@ -1,0 +1,55 @@
+{
+  "request_id": "advanced-sales-exploration",
+  "question": "Show monthly completed-order sales, share of total, and rank by region.",
+  "model_path": "semantic/models/demo_sales.yaml",
+  "plan": {
+    "semantic_model": "demo_sales",
+    "metric_ids": ["gross_sales"],
+    "dimensions": ["orders.region"],
+    "time_dimensions": [
+      {
+        "field": "orders.order_date",
+        "grain": "month",
+        "name": "order_month"
+      }
+    ],
+    "filters": [
+      {
+        "field": "orders.status",
+        "operator": "in",
+        "values": ["completed", "shipped"]
+      }
+    ],
+    "having": [
+      {
+        "metric": "gross_sales",
+        "operator": ">",
+        "value": 0
+      }
+    ],
+    "calculations": [
+      {
+        "name": "sales_share",
+        "type": "percent_of_total",
+        "metric": "gross_sales"
+      },
+      {
+        "name": "sales_rank",
+        "type": "rank",
+        "metric": "gross_sales",
+        "direction": "desc"
+      }
+    ],
+    "order_by": [
+      {
+        "field": "order_month",
+        "direction": "asc"
+      },
+      {
+        "field": "sales_rank",
+        "direction": "asc"
+      }
+    ],
+    "max_rows": 100
+  }
+}

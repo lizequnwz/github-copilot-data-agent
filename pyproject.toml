@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "copilot-snowflake-data-agent"
 version = "0.1.0"
-description = "Local tools for a semantic-model-assisted GitHub Copilot Snowflake data agent"
+description = "Semantic-model-first GitHub Copilot Snowflake data agent"
 requires-python = ">=3.11"
 dependencies = [
   "jsonschema>=4.26,<5",

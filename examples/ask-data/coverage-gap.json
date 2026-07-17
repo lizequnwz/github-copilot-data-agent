@@ -1,0 +1,11 @@
+{
+  "request_id": "customer-lifetime-value-coverage",
+  "question": "Show customer lifetime value by acquisition channel.",
+  "model_path": "semantic/models/demo_sales.yaml",
+  "plan": {
+    "semantic_model": "demo_sales",
+    "metric_ids": ["customer_lifetime_value"],
+    "dimensions": ["customers.acquisition_channel"],
+    "max_rows": 100
+  }
+}

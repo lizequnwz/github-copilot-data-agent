@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from data_agent.config import Settings
 from data_agent.io import ContractError
-from data_agent.tools.snowflake import _connect, config_check, connection_check, search_objects
+from data_agent.snowflake import _connect, config_check, connection_check, search_objects
 
 
 class SnowflakeConnectionTests(unittest.TestCase):
@@ -120,8 +120,8 @@ class SnowflakeConnectionTests(unittest.TestCase):
                 return Cursor()
 
         with (
-            patch("data_agent.tools.snowflake.load_settings", return_value=settings),
-            patch("data_agent.tools.snowflake._connect", return_value=Connection()),
+            patch("data_agent.snowflake.load_settings", return_value=settings),
+            patch("data_agent.snowflake._connect", return_value=Connection()),
         ):
             result = connection_check(
                 {"request_id": "connection", "configuration_confirmed": True}
@@ -146,7 +146,7 @@ class SnowflakeConnectionTests(unittest.TestCase):
             allowed_objects=(),
             allow_sensitive_sampling=False,
         )
-        with patch("data_agent.tools.snowflake.load_settings", return_value=settings):
+        with patch("data_agent.snowflake.load_settings", return_value=settings):
             with self.assertRaisesRegex(ContractError, "request.database"):
                 search_objects({"request_id": "search", "query": "orders"})
 

@@ -6,16 +6,16 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
-from data_agent.analysis import analyze
+from data_agent.ask.analysis import analyze
+from data_agent.ask.compiler import compile_plan
+from data_agent.ask.validation import validate_result
 from data_agent.config import Settings
 from data_agent.io import ContractError
-from data_agent.security.sql import SQLSafetyError, validate_sql
-from data_agent.semantic.competency import test_document
-from data_agent.semantic.compiler import compile_plan
-from data_agent.semantic.diff import semantic_changes
-from data_agent.semantic.models import SemanticError, load_document
-from data_agent.tools.snowflake import execute_readonly
-from data_agent.tools.result_validation import validate_result
+from data_agent.models import SemanticError, load_document
+from data_agent.setup.competency import test_document
+from data_agent.setup.diff import semantic_changes
+from data_agent.snowflake import execute_readonly
+from data_agent.sql_safety import SQLSafetyError, validate_sql
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class AnalysisContractTests(unittest.TestCase):
     def test_semantic_exploration_uses_model_and_validation_is_optional(self) -> None:
         request = json.loads(
-            (ROOT / "examples/analysis/exploratory-sales.json").read_text()
+            (ROOT / "examples/ask-data/exploration.json").read_text()
         )
         response = analyze(request)
         self.assertEqual(response["status"], "success")
@@ -41,14 +41,14 @@ class AnalysisContractTests(unittest.TestCase):
 
     def test_analysis_mode_field_is_rejected_to_keep_one_core_workflow(self) -> None:
         request = json.loads(
-            (ROOT / "examples/analysis/exploratory-sales.json").read_text()
+            (ROOT / "examples/ask-data/exploration.json").read_text()
         )
         request["analysis_mode"] = "exploratory"
         with self.assertRaisesRegex(ContractError, "no longer a request field"):
             analyze(request)
 
     def test_default_result_grain_matches_returned_alias(self) -> None:
-        request = json.loads((ROOT / "examples/analysis/sales-by-region.json").read_text())
+        request = json.loads((ROOT / "examples/ask-data/validated.json").read_text())
         response = analyze(request)
         self.assertEqual(response["status"], "success")
         self.assertEqual(response["grain"], ["orders.region"])
@@ -63,7 +63,7 @@ class AnalysisContractTests(unittest.TestCase):
         self.assertEqual(response["parameters"], ["completed", "2026-05-01", "2026-07-01"])
 
     def test_relationship_scenario_compiles_and_validates(self) -> None:
-        request = json.loads((ROOT / "examples/analysis/sales-by-segment.json").read_text())
+        request = json.loads((ROOT / "examples/ask-data/joined-analysis.json").read_text())
         response = analyze(request)
         self.assertEqual(response["status"], "success")
         self.assertEqual(response["result_grain"], ["segment"])
@@ -73,7 +73,7 @@ class AnalysisContractTests(unittest.TestCase):
         )
 
     def test_live_snowflake_uppercase_columns_match_semantic_aliases(self) -> None:
-        request = json.loads((ROOT / "examples/analysis/sales-by-region.json").read_text())
+        request = json.loads((ROOT / "examples/ask-data/validated.json").read_text())
         request.update(
             {
                 "execute": True,
@@ -84,9 +84,9 @@ class AnalysisContractTests(unittest.TestCase):
         connection = _AnalysisConnection()
         settings = _settings()
         with (
-            patch("data_agent.analysis.load_settings", return_value=settings),
-            patch("data_agent.tools.snowflake.load_settings", return_value=settings),
-            patch("data_agent.tools.snowflake._connect", return_value=connection),
+            patch("data_agent.ask.analysis.load_settings", return_value=settings),
+            patch("data_agent.snowflake.load_settings", return_value=settings),
+            patch("data_agent.snowflake._connect", return_value=connection),
         ):
             response = analyze(request)
 
@@ -144,7 +144,7 @@ class AnalysisContractTests(unittest.TestCase):
         self.assertEqual(compiled["result_grain"], ["orders__total"])
 
     def test_ordering_rejects_unselected_fields(self) -> None:
-        with self.assertRaisesRegex(SemanticError, "selected dimensions or metrics"):
+        with self.assertRaisesRegex(SemanticError, "selected dimensions, metrics, or calculations"):
             compile_plan(
                 load_document(ROOT / "semantic/models/demo_sales.yaml"),
                 {
@@ -156,8 +156,8 @@ class AnalysisContractTests(unittest.TestCase):
             )
 
     def test_analysis_rejects_unpromoted_model_paths(self) -> None:
-        request = json.loads((ROOT / "examples/analysis/sales-by-region.json").read_text())
-        request["model_path"] = "semantic/generated/demo_sales.osi.yaml"
+        request = json.loads((ROOT / "examples/ask-data/validated.json").read_text())
+        request["model_path"] = "workspaces/models/demo_sales.osi.yaml"
         with self.assertRaisesRegex(SemanticError, "under semantic/models"):
             analyze(request)
 
@@ -187,6 +187,54 @@ class AnalysisContractTests(unittest.TestCase):
         self.assertIn("AS average_order_value", compiled["sql"])
         self.assertIn("LIMIT 11", compiled["sql"])
 
+    def test_detail_query_richer_filters_and_time_grain(self) -> None:
+        document = load_document(ROOT / "semantic/models/demo_sales.yaml")
+        detail = compile_plan(
+            document,
+            {
+                "semantic_model": "demo_sales",
+                "metric_ids": [],
+                "dimensions": ["orders.order_id", "orders.region"],
+                "filters": [
+                    {
+                        "field": "orders.status",
+                        "operator": "in",
+                        "values": ["completed", "shipped"],
+                    },
+                    {
+                        "field": "orders.region",
+                        "operator": "is_not_null",
+                    },
+                ],
+                "max_rows": 25,
+            },
+        )
+        self.assertNotIn("GROUP BY", detail["sql"])
+        self.assertIn("orders.status IN (%s, %s)", detail["sql"])
+        self.assertIn("orders.region IS NOT NULL", detail["sql"])
+
+        advanced = json.loads(
+            (ROOT / "examples/ask-data/advanced-plan.json").read_text()
+        )
+        compiled = compile_plan(document, advanced["plan"])
+        self.assertIn("DATE_TRUNC('month', orders.order_date)", compiled["sql"])
+        self.assertIn("HAVING SUM(orders.gross_sales_amount) > %s", compiled["sql"])
+        self.assertIn("AS sales_share", compiled["sql"])
+        self.assertIn("AS sales_rank", compiled["sql"])
+        self.assertEqual(compiled["parameters"], ["completed", "shipped", 0])
+
+    def test_missing_semantics_return_structured_coverage_gap(self) -> None:
+        request = json.loads(
+            (ROOT / "examples/ask-data/coverage-gap.json").read_text()
+        )
+        response = analyze(request)
+        self.assertEqual(response["status"], "coverage_gap")
+        self.assertEqual(response["next_action"], "semantic_setup")
+        self.assertIn(
+            "customer_lifetime_value",
+            response["coverage"]["missing"]["metrics"],
+        )
+
     def test_competency_fixture_passes(self) -> None:
         result = test_document(
             load_document(ROOT / "semantic/models/demo_sales.yaml"),
@@ -203,8 +251,8 @@ class RowLimitTests(unittest.TestCase):
             with self.subTest(returned_rows=returned_rows):
                 connection = _Connection(returned_rows)
                 with (
-                    patch("data_agent.tools.snowflake.load_settings", return_value=settings),
-                    patch("data_agent.tools.snowflake._connect", return_value=connection),
+                    patch("data_agent.snowflake.load_settings", return_value=settings),
+                    patch("data_agent.snowflake._connect", return_value=connection),
                 ):
                     result = execute_readonly(
                         {

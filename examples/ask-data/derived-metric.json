@@ -1,0 +1,23 @@
+{
+  "request_id": "derived-average-order-value-example",
+  "question": "What is average order value by region for completed orders?",
+  "model_path": "semantic/models/demo_sales.yaml",
+  "plan": {
+    "semantic_model": "demo_sales",
+    "metric_ids": [],
+    "derived_metrics": [
+      {
+        "name": "average_order_value",
+        "description": "Gross sales divided by the number of orders in the selected population.",
+        "expression": "SUM(orders.gross_sales_amount) / NULLIF(COUNT(orders.order_id), 0)",
+        "assumptions": ["Each non-null order ID represents one order."]
+      }
+    ],
+    "dimensions": ["orders.region"],
+    "filters": [
+      {"field": "orders.status", "operator": "=", "value": "completed"}
+    ],
+    "order_by": [{"field": "average_order_value", "direction": "desc"}],
+    "max_rows": 10
+  }
+}

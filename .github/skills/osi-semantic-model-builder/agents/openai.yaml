@@ -1,5 +1,0 @@
-interface:
-  display_name: "OSI Semantic Model Builder"
-  short_description: "Convert BI semantic exports into OSI models"
-  default_prompt: "Use $osi-semantic-model-builder to convert this BI semantic export into an OSI model and summarize its review items."
-

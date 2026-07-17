@@ -1,0 +1,4 @@
+{
+  "request_id": "semantic-setup-validate-demo-sales",
+  "model_path": "semantic/models/demo_sales.yaml"
+}

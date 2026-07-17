@@ -1,0 +1,4 @@
+interface:
+  display_name: "Semantic Setup"
+  short_description: "Create and improve promoted semantic models"
+  default_prompt: "Use $semantic-setup to convert this semantic source, guide review, and promote it only when ready."

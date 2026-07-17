@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from scripts.check_snowflake import run_check
+from data_agent.diagnostics import run_check
 
 
 class ConnectionDiagnosticsTests(unittest.TestCase):

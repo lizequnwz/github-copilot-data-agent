@@ -8,12 +8,14 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from data_agent.io import ContractError
-from data_agent.semantic.conversion import convert_semantic
-from data_agent.semantic.ossie import official_validation_errors, validate_osi_document
-from data_agent.semantic.review import _resolves_translation_issue, review_semantic, sha256_text
-from data_agent.semantic.verification import verify_semantic_model
+from data_agent.ossie import official_validation_errors, validate_osi_document
+from data_agent.setup.conversion import convert_semantic
+from data_agent.setup.review import _resolves_translation_issue, review_semantic, sha256_text
+from data_agent.setup.verification import verify_semantic_model
 
 ROOT = Path(__file__).resolve().parents[1]
+MODEL_WORKSPACES = ROOT / "workspaces/models"
+MODEL_WORKSPACES.mkdir(parents=True, exist_ok=True)
 FIXTURE = ROOT / "tests/fixtures/generic/sales.yaml"
 
 
@@ -122,7 +124,7 @@ class SemanticReviewTests(unittest.TestCase):
                 ),
             },
         ]
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "workspaces/models") as directory:
             raw_path = Path(directory) / "reviewed_unsupported.raw.osi.yaml"
             raw_text = json.dumps(document)
             raw_path.write_text(raw_text)
@@ -159,7 +161,7 @@ class SemanticReviewTests(unittest.TestCase):
                 )
             )
             promotion_root = Path(directory) / "promotion-root"
-            with patch("data_agent.semantic.review.ROOT", promotion_root):
+            with patch("data_agent.setup.review.ROOT", promotion_root):
                 result = review_semantic(
                     {
                         "request_id": "reviewed-unsupported",
@@ -175,7 +177,7 @@ class SemanticReviewTests(unittest.TestCase):
         self.assertTrue(result["promoted"])
 
     def test_empty_audited_review_is_clean_and_offline(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "workspaces/models") as directory:
             built = self._build(directory)
             raw_path = Path(str(built["raw_model_path"]))
             manifest_path = Path(str(built["manifest_path"]))
@@ -192,8 +194,8 @@ class SemanticReviewTests(unittest.TestCase):
             )
             promotion_root = Path(directory) / "promotion-root"
             with (
-                patch("data_agent.semantic.verification._connect") as connect,
-                patch("data_agent.semantic.review.ROOT", promotion_root),
+                patch("data_agent.setup.verification._connect") as connect,
+                patch("data_agent.setup.review.ROOT", promotion_root),
             ):
                 result = review_semantic(
                     {
@@ -224,7 +226,7 @@ class SemanticReviewTests(unittest.TestCase):
             self.assertEqual(result["final_model_sha256"], repeated["final_model_sha256"])
 
     def test_patch_hash_mismatch_and_protected_version_are_rejected(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "workspaces/models") as directory:
             built = self._build(directory)
             patch_path = Path(directory) / "review.patch.json"
             patch_path.write_text(
@@ -292,7 +294,7 @@ class SemanticReviewTests(unittest.TestCase):
                 review_semantic(request)
 
     def test_assumptions_prevent_clean_promotion(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "workspaces/models") as directory:
             built = self._build(directory)
             manifest = json.loads(Path(str(built["manifest_path"])).read_text())
             patch_path = Path(directory) / "review.patch.json"
@@ -330,7 +332,7 @@ class SemanticReviewTests(unittest.TestCase):
             self.assertTrue(result["unresolved_assumptions"])
 
     def test_failed_competency_preserves_previously_promoted_model(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "workspaces/models") as directory:
             built = self._build(directory)
             manifest = json.loads(Path(str(built["manifest_path"])).read_text())
             patch_path = Path(directory) / "review.patch.json"
@@ -364,7 +366,7 @@ cases:
             previous = "previous promoted model\n"
             promoted_path.write_text(previous)
 
-            with patch("data_agent.semantic.review.ROOT", promotion_root):
+            with patch("data_agent.setup.review.ROOT", promotion_root):
                 result = review_semantic(
                     {
                         "request_id": "review-failed-competency",
@@ -381,7 +383,7 @@ cases:
             self.assertEqual(promoted_path.read_text(), previous)
 
     def test_add_replace_remove_and_path_guardrails(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "workspaces/models") as directory:
             built = self._build(directory)
             manifest = json.loads(Path(str(built["manifest_path"])).read_text())
             raw_sha = manifest["osi"]["raw_model_sha256"]
@@ -460,7 +462,7 @@ cases:
                     )
 
     def test_logic_change_requires_high_confidence_direct_evidence(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "workspaces/models") as directory:
             built = self._build(directory)
             manifest = json.loads(Path(str(built["manifest_path"])).read_text())
             raw_sha = manifest["osi"]["raw_model_sha256"]
@@ -507,7 +509,7 @@ class SnowflakeVerificationTests(unittest.TestCase):
             authenticator="externalbrowser",
             role="READONLY",
         )
-        with patch("data_agent.semantic.verification.load_settings", return_value=settings):
+        with patch("data_agent.setup.verification.load_settings", return_value=settings):
             with self.assertRaisesRegex(ContractError, "configuration_confirmed"):
                 verify_semantic_model(
                     {
@@ -526,9 +528,9 @@ class SnowflakeVerificationTests(unittest.TestCase):
             role="READONLY",
         )
         with (
-            patch("data_agent.semantic.verification.load_settings", return_value=settings),
+            patch("data_agent.setup.verification.load_settings", return_value=settings),
             patch(
-                "data_agent.semantic.verification._connect",
+                "data_agent.setup.verification._connect",
                 return_value=_FakeConnection(cursor),
             ),
         ):
@@ -554,9 +556,9 @@ class SnowflakeVerificationTests(unittest.TestCase):
             role="READONLY",
         )
         with (
-            patch("data_agent.semantic.verification.load_settings", return_value=settings),
+            patch("data_agent.setup.verification.load_settings", return_value=settings),
             patch(
-                "data_agent.semantic.verification._connect",
+                "data_agent.setup.verification._connect",
                 return_value=_FakeConnection(cursor),
             ),
         ):

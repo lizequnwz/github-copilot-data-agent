@@ -47,13 +47,13 @@ jobs:
         run: uv run python ossie-main/validation/validate.py semantic/models/demo_sales.yaml
 
       - name: Run golden analysis
-        run: uv run python -m data_agent analyze --input examples/analysis/sales-by-region.json --output /tmp/golden-analysis.json
+        run: uv run data-agent ask --input examples/ask-data/validated.json --no-workspace --output /tmp/golden-analysis.json
 
       - name: Render golden report
-        run: uv run python scripts/demo_analysis.py
+        run: uv run data-agent ask --input examples/ask-data/report.json --output /tmp/golden-report.json
 
       - name: Run competency suite
-        run: uv run python -m data_agent osi-test --input examples/requests/osi-test.json --output /tmp/competency.json
+        run: uv run data-agent advanced osi-test --input examples/semantic-setup/test-model.json --output /tmp/competency.json
 
       - name: Verify checks leave the working tree clean
         run: test -z "$(git status --porcelain --untracked-files=all)"

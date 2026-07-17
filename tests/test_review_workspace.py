@@ -13,9 +13,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 from data_agent.io import ContractError
-from data_agent.semantic.conversion import convert_semantic
-from data_agent.semantic.models import load_document
-from data_agent.semantic.review_workspace import (
+from data_agent.models import load_document
+from data_agent.setup.conversion import convert_semantic
+from data_agent.setup.review_workspace import (
     ReviewApplication,
     MAX_REQUEST_BYTES,
     _editable_objects,
@@ -31,6 +31,8 @@ from data_agent.semantic.review_workspace import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
+MODEL_WORKSPACES = ROOT / "workspaces/models"
+MODEL_WORKSPACES.mkdir(parents=True, exist_ok=True)
 FIXTURE = ROOT / "tests/fixtures/generic/sales.yaml"
 
 
@@ -47,7 +49,7 @@ class ReviewWorkspaceTests(unittest.TestCase):
         return built, review_paths(built["raw_model_path"], built["manifest_path"])
 
     def test_decisions_require_current_hash_evidence_and_known_keys(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "workspaces/models") as directory:
             _, paths = self._build(directory)
             decisions = default_decisions(paths.raw)
             decisions["unknown"] = True
@@ -90,7 +92,7 @@ class ReviewWorkspaceTests(unittest.TestCase):
                 validate_decisions(decisions, paths.raw)
 
     def test_field_rename_preserves_physical_key_references(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "workspaces/models") as directory:
             _, paths = self._build(directory)
             decisions = default_decisions(paths.raw)
             decisions["operations"] = [
@@ -111,7 +113,7 @@ class ReviewWorkspaceTests(unittest.TestCase):
             self.assertNotIn("intent", patch["operations"][0])
 
     def test_dataset_rename_requires_explicit_expression_correction(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "workspaces/models") as directory:
             _, paths = self._build(directory)
             decisions = default_decisions(paths.raw)
             decisions["operations"] = [
@@ -130,7 +132,7 @@ class ReviewWorkspaceTests(unittest.TestCase):
                 compile_decisions(decisions, paths)
 
     def test_apply_generates_audit_and_promotes_only_after_confirmation(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "workspaces/models") as directory:
             _, paths = self._build(directory)
             decisions = default_decisions(paths.raw)
             app = ReviewApplication(
@@ -144,7 +146,7 @@ class ReviewWorkspaceTests(unittest.TestCase):
             with self.assertRaisesRegex(ContractError, "confirm the promotion destination"):
                 app.apply({"decisions": decisions, "confirm_promote": False})
             promotion_root = Path(directory) / "promotion-root"
-            with patch("data_agent.semantic.review.ROOT", promotion_root):
+            with patch("data_agent.setup.review.ROOT", promotion_root):
                 applied = app.apply({"decisions": decisions, "confirm_promote": True})
             self.assertTrue(applied["result"]["clean"])
             self.assertTrue(applied["result"]["promoted"])
@@ -154,7 +156,7 @@ class ReviewWorkspaceTests(unittest.TestCase):
             self.assertEqual(manifest["review"]["patch_source"], "inline_review_draft")
 
     def test_draft_and_static_workspace_are_accessible_and_non_mutating(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "workspaces/models") as directory:
             built, paths = self._build(directory)
             raw_before = Path(str(built["raw_model_path"])).read_bytes()
             decisions = default_decisions(paths.raw)
@@ -203,7 +205,7 @@ class ReviewWorkspaceTests(unittest.TestCase):
             self.assertNotIn("https://", document)
 
     def test_preview_is_non_mutating_and_supports_multiple_new_metrics(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "workspaces/models") as directory:
             _, paths = self._build(directory)
             decisions = default_decisions(paths.raw)
             evidence = {
@@ -246,7 +248,7 @@ class ReviewWorkspaceTests(unittest.TestCase):
         node = shutil.which("node")
         if node is None:
             self.skipTest("Node.js is unavailable for static JavaScript validation")
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "workspaces/models") as directory:
             _, paths = self._build(directory)
             state = ReviewApplication(
                 paths,
@@ -368,7 +370,7 @@ class ReviewWorkspaceTests(unittest.TestCase):
         self.assertIn("customer_id", from_columns["options"])
 
     def test_powerbi_selectors_preserve_physical_keys_and_relationship_columns(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "workspaces/models") as directory:
             built = convert_semantic(
                 {
                     "request_id": "powerbi-workspace",
@@ -393,7 +395,7 @@ class ReviewWorkspaceTests(unittest.TestCase):
         self.assertIn("customer_id", from_columns["options"])
 
     def test_loopback_server_rejects_bad_token_and_origin_and_saves_draft(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "workspaces/models") as directory:
             _, paths = self._build(directory)
             app = ReviewApplication(
                 paths,

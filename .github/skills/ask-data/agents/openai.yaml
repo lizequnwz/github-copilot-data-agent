@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ask Data"
+  short_description: "Explore semantic data and create analysis artifacts"
+  default_prompt: "Use $ask-data to answer this business question with a semantic plan, generated SQL, and an analysis workspace."

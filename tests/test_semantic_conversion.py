@@ -8,17 +8,19 @@ from pathlib import Path
 
 import yaml
 
-from data_agent.bi.extract import extract_powerbi_ir, extract_tableau_ir
+from data_agent.ask.compiler import compile_plan
 from data_agent.io import ContractError
-from data_agent.semantic.conversion import convert_semantic, detect_source_type
-from data_agent.semantic.compiler import compile_plan
-from data_agent.semantic.ingestion import build_osi_from_ir
-from data_agent.semantic.models import validate_document
-from data_agent.semantic.ossie import SCHEMA
+from data_agent.models import validate_document
+from data_agent.ossie import SCHEMA
+from data_agent.setup.conversion import convert_semantic, detect_source_type
+from data_agent.setup.ingestion import build_osi_from_ir
+from data_agent.setup.sources import extract_powerbi_ir, extract_tableau_ir
 
 ROOT = Path(__file__).resolve().parents[1]
+MODEL_WORKSPACES = ROOT / "workspaces/models"
+MODEL_WORKSPACES.mkdir(parents=True, exist_ok=True)
 FIXTURES = ROOT / "tests/fixtures"
-EXAMPLES = ROOT / "examples"
+EXAMPLES = ROOT / "examples/semantic-setup"
 
 
 class SemanticConversionTests(unittest.TestCase):
@@ -193,7 +195,7 @@ class SemanticConversionTests(unittest.TestCase):
         self.assertEqual(ir["metrics"][0]["normalized_expression"], "SUM(utf16_scores.score)")
 
     def test_world_tds_converts_to_schema_valid_candidate(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "workspaces/models") as directory:
             response = convert_semantic(
                 {
                     "request_id": "world-convert",
@@ -215,7 +217,7 @@ class SemanticConversionTests(unittest.TestCase):
             )
 
     def test_tableau_placeholder_source_map_remains_blocking(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "workspaces/models") as directory:
             response = convert_semantic(
                 {
                     "request_id": "world-placeholder",
@@ -264,7 +266,7 @@ class SemanticConversionTests(unittest.TestCase):
         self.assertEqual(ir["metrics"][0]["normalized_expression"], "SUM(namespaced_scores.score)")
 
     def test_end_to_end_generic_conversion_writes_candidate_and_manifest(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "semantic/generated") as directory:
+        with tempfile.TemporaryDirectory(dir=ROOT / "workspaces/models") as directory:
             response = convert_semantic(
                 {
                     "request_id": "generic",

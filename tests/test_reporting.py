@@ -5,24 +5,31 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from data_agent.ask.service import ask_data
 from data_agent.io import ContractError
-from data_agent.reporting.render import render_chart, render_report
-from data_agent.reporting.workspace import render_analysis_workspace
+from data_agent.ask.report import render_chart, render_report
+from data_agent.ask.workspace import render_analysis_workspace
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class ReportingTests(unittest.TestCase):
     def test_exploratory_workspace_contains_markdown_notebook_and_evidence(self) -> None:
-        workspace_request = json.loads(
-            (ROOT / "examples/requests/render-workspace.json").read_text(encoding="utf-8")
+        analysis_request = json.loads(
+            (ROOT / "examples/ask-data/exploration.json").read_text(encoding="utf-8")
         )
         with tempfile.TemporaryDirectory(prefix="workspace-") as directory:
-            output = Path(directory) / "reports" / "exploration"
-            workspace_request["output_dir"] = str(output)
-            result = render_analysis_workspace(workspace_request)
+            output = Path(directory) / "workspaces" / "analysis" / "exploration"
+            result = render_analysis_workspace(
+                {
+                    "request_id": "workspace",
+                    "output_dir": str(output),
+                    "analysis_request": analysis_request,
+                }
+            )
             markdown = Path(result["markdown_path"]).read_text(encoding="utf-8")
             notebook = json.loads(Path(result["notebook_path"]).read_text(encoding="utf-8"))
+            manifest = json.loads(Path(result["manifest_path"]).read_text(encoding="utf-8"))
 
         self.assertEqual(result["status"], "success")
         self.assertIn("Result validation: `not_run`", markdown)
@@ -35,10 +42,16 @@ class ReportingTests(unittest.TestCase):
         )
         self.assertIn("PLAN =", notebook_source)
         self.assertNotIn("SQL =", notebook_source)
+        self.assertNotIn("USE_SAVED_RESPONSE", notebook_source)
+        self.assertIn("PLAN_CHANGED", notebook_source)
+        self.assertEqual(manifest["manifest_version"], "1.0")
+        self.assertEqual(manifest["model"]["name"], "demo_sales")
+        self.assertTrue(manifest["model"]["sha256"])
+        self.assertTrue(manifest["plan"]["sha256"])
 
     def test_exploratory_report_is_allowed_and_clearly_labeled(self) -> None:
         with tempfile.TemporaryDirectory(prefix="reports-") as directory:
-            output = Path(directory) / "reports" / "exploratory.html"
+            output = Path(directory) / "workspaces" / "analysis" / "exploratory.html"
             result = render_report(
                 {
                     "request_id": "exploratory-report",
@@ -53,26 +66,49 @@ class ReportingTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "success")
         self.assertIn("Exploratory · not validated", document)
+        self.assertIn("Exploratory analysis · Ask Data", document)
+        self.assertNotIn("Validated analysis · Ask Data", document)
 
     def test_runnable_request_examples(self) -> None:
-        chart_request = json.loads(
-            (ROOT / "examples/requests/render-chart.json").read_text(encoding="utf-8")
+        request = json.loads(
+            (ROOT / "examples/ask-data/report.json").read_text(encoding="utf-8")
         )
-        chart = render_chart(chart_request)
-        self.assertEqual(chart["status"], "success")
+        with tempfile.TemporaryDirectory(prefix="workspaces-") as directory:
+            request["workspace_dir"] = str(
+                Path(directory) / "workspaces" / "analysis" / "report"
+            )
+            response = ask_data(request)
+            report_path = Path(response["artifacts"]["report"])
+            self.assertTrue(report_path.is_file())
+            manifest_path = Path(response["artifacts"]["manifest"])
+            self.assertTrue(manifest_path.is_file())
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            self.assertEqual(manifest["artifacts"]["report"], str(report_path))
+            self.assertEqual(
+                manifest["narrative"]["summary"],
+                "East leads completed-order gross sales in the synthetic example.",
+            )
 
-        report_request = json.loads(
-            (ROOT / "examples/requests/render-report.json").read_text(encoding="utf-8")
+        self.assertEqual(response["status"], "success")
+
+    def test_planned_analysis_creates_an_editable_workspace_by_default(self) -> None:
+        request = json.loads(
+            (ROOT / "examples/ask-data/advanced-plan.json").read_text(encoding="utf-8")
         )
-        with tempfile.TemporaryDirectory(prefix="reports-") as directory:
-            output = Path(directory) / "reports" / "example.html"
-            report_request["output_path"] = str(output)
-            report_request["chart_svg"] = chart["svg"]
-            report_request["chart_heading"] = "Regional comparison"
-            report = render_report(report_request)
+        with tempfile.TemporaryDirectory(prefix="workspaces-") as directory:
+            request["workspace_dir"] = str(
+                Path(directory) / "workspaces" / "analysis" / "planned"
+            )
+            response = ask_data(request)
+            notebook = Path(response["artifacts"]["notebook"])
+            manifest = json.loads(
+                Path(response["artifacts"]["manifest"]).read_text(encoding="utf-8")
+            )
 
-        self.assertEqual(report["status"], "success")
-        self.assertTrue(report["content_sha256"])
+            self.assertTrue(notebook.is_file())
+            self.assertEqual(response["status"], "planned")
+            self.assertEqual(manifest["query"]["sql"], response["analysis"]["sql"])
+            self.assertIsNone(manifest["result"])
 
     def test_chart_and_html_report(self) -> None:
         chart = render_chart(
@@ -96,7 +132,7 @@ class ReportingTests(unittest.TestCase):
         )
         self.assertIn("aria-labelledby", chart["svg"])
         with tempfile.TemporaryDirectory(prefix="reports-") as directory:
-            output = Path(directory) / "reports" / "sales.html"
+            output = Path(directory) / "workspaces" / "analysis" / "sales.html"
             result = render_report(
                 {
                     "request_id": "report",
@@ -208,7 +244,7 @@ class ReportingTests(unittest.TestCase):
 
     def test_structured_insights_charts_and_table_interactions(self) -> None:
         with tempfile.TemporaryDirectory(prefix="reports-") as directory:
-            output = Path(directory) / "reports" / "interactive.html"
+            output = Path(directory) / "workspaces" / "analysis" / "interactive.html"
             result = render_report(
                 {
                     "request_id": "interactive",

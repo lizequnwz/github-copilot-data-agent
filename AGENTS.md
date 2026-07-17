@@ -47,8 +47,11 @@ the foundation; formal result validation is the optional maturity step.
 ## Project boundaries
 
 - `.github/agents/` routes the GitHub Copilot experience.
-- `.github/skills/` contains the authoritative Ask Data, Semantic Setup, and reporting procedures.
+- `.github/skills/ask-data/` owns analysis, notebooks, validation, charts, and reports.
+- `.github/skills/semantic-setup/` owns model import, review, validation, and promotion.
 - `data_agent/` contains deterministic execution helpers.
+- `data_agent/ask/` contains the Ask Data orchestrator, compiler, coverage, workspace, and reports.
+- `data_agent/setup/` contains semantic-source conversion, review, verification, and promotion.
 - `semantic/models/` contains promoted models available to analysis.
-- `semantic/generated/` contains repeatable conversion and review artifacts.
+- `workspaces/` contains ignored local analysis and model work.
 - `ossie-main/` is the pinned official Apache Ossie schema and validation source.

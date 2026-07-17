@@ -1,16 +1,16 @@
 # GitHub Copilot Snowflake Data Exploration Agent
 
 This repository provides a local GitHub Copilot agent for exploring business questions with
-read-only Snowflake SQL, editable Jupyter notebooks, Markdown analysis records, optional semantic
-models, and self-contained reports. It also includes an OSI semantic model builder for teams that
-want to turn useful exploratory patterns into shared definitions later.
+shared OSI semantic models, compiler-generated read-only Snowflake SQL, editable Jupyter notebooks,
+Markdown analysis records, optional result validation, and self-contained reports. It also includes
+an OSI semantic model builder for adding or improving model coverage.
 
 ## What it solves
 
-A user can start with a question, partial SQL, a table name, or a hypothesis. The agent helps write
-and run read-only SQL, inspect results, make quick charts, and iterate in a generated notebook.
-Shared OSI definitions and formal result checks are available when the analysis becomes recurring,
-important, or ready to publish; they are not prerequisites for exploration.
+A user starts with a question or hypothesis. The agent resolves a promoted semantic model, builds a
+small semantic plan, generates SQL from model-defined sources and relationships, and helps inspect,
+chart, and refine the result in a notebook. Semantic consistency is always present; formal result
+checks are added only when useful.
 
 Typical request:
 
@@ -19,26 +19,30 @@ Typical request:
 
 The agent is designed to provide:
 
-- fast direct-SQL exploration without mandatory semantic or governance metadata
-- visible SQL, results, query details, and useful caveats
+- semantic-model-backed exploration without heavyweight upfront ceremony
+- visible model, plan, generated SQL, results, query details, and useful caveats
 - generated `analysis.md` and editable `analysis.ipynb` workspaces
 - quick Python charts and self-contained HTML reports
-- optional result checks, semantic plans, and promoted definitions as the work matures
+- optional result checks as the work matures
+- request-scoped derived metrics over promoted fields when a shared metric is missing
 - hard read-only, credential, timeout, and local result-size protections
 - BI-to-OSI conversion for building and refreshing semantic models
 
 ## Choose your journey
 
-- **Explore Data**: select `data-analytics`, ask a question, inspect the SQL and result, and iterate
-  in chat or a generated notebook.
-- **Validate a Pattern**: add result checks or move stable logic to a semantic plan when assurance
-  becomes useful.
+- **Explore Data**: select `data-analytics`, ask a question, inspect the semantic plan, generated
+  SQL, and result, then iterate in chat or a generated notebook.
+- **Validate a Result**: add focused result checks when assurance becomes useful.
 - **Import a Model**: provide Tableau, Power BI, generic, neutral IR, or existing Ossie metadata and
   request **Semantic Setup**.
 - **Review Definitions**: use the description-first Catalog and guided metric builder as a Business
   or Analyst reviewer; normal review does not require YAML or JSON editing.
 - **Configure Snowflake**: choose browser SSO or environment-token OAuth, then confirm the
   non-secret preferred context.
+
+The product has two top-level routes: **Ask Data** and **Semantic Setup**. Ask Data has one
+semantic-model-first analysis flow. Exploration and validation are assurance states within that
+flow, not separate modes.
 
 This is an analyst-led GitHub Copilot workflow in which business stakeholders can participate in
 definition review. It is not a standalone business portal, hosted service, or MCP server.
@@ -55,25 +59,23 @@ definition review. It is not a standalone business portal, hosted service, or MC
 
 1. Open this repository in a GitHub Copilot-supported environment and select the
    `data-analytics` agent.
-2. Ask a business question, paste SQL, or name a table you want to investigate.
-3. Review the proposed read-only SQL. The agent asks only for choices needed to make the next query
-   useful.
+2. Ask a business question or state a hypothesis.
+3. Review the selected promoted model and lightweight semantic plan. The agent asks only for choices
+   needed to make the next plan useful.
 4. Confirm the displayed non-secret Snowflake context before the first live connection.
-5. Inspect the result and iterate. Ask for a Markdown/notebook workspace, chart, or HTML report at
-   any point; exploratory artifacts are labeled as such.
-6. Add result checks or semantic definitions later if the analysis becomes recurring or published.
+5. Inspect the generated SQL and result, then iterate by editing the plan, filters, dimensions, or
+   request-scoped derived metric.
+6. Ask for a Markdown/notebook workspace, chart, or HTML report at any point. Add result checks later
+   if the analysis needs more assurance.
 
 Example trigger:
 
-> Explore completed-order sales by region. Show me the SQL and create a notebook so I can adjust it.
+> Explore completed-order sales by region using the shared model. Show the generated SQL and create
+> a notebook where I can adjust the semantic plan.
 
-If a question becomes a repeated team workflow, the agent can convert and review a BI semantic
-export before promoting shared definitions. For Tableau, the normal input is a `.tds` datasource
-like `examples/tableau/world.tds`, together with a source map and, when needed, a field map.
-
-When a promoted model helps, the agent can use it. Otherwise direct exploratory SQL is allowed over
-accessible Snowflake objects. Exploratory calculations remain unpromoted until intentionally moved
-through Semantic Setup.
+Every analysis uses a promoted model in `semantic/models/`. When no model covers the question, use
+Semantic Setup to import or enhance one before querying. When the model has the needed fields but no
+shared metric, the analysis may use an explicitly unpromoted derived expression over those fields.
 
 See [User workflow](docs/WORKFLOW.md) for first-time setup, trigger options, prompt templates, the
 Tableau `.tds` onboarding path, and expected responses.
@@ -87,7 +89,8 @@ uv sync --extra dev
 uv run python scripts/demo_exploration.py
 ```
 
-The walkthrough uses synthetic regional sales rows and writes an editable local workspace:
+The walkthrough compiles the promoted `demo_sales` model against synthetic regional sales rows and
+writes an editable local workspace:
 
 ```text
 reports/generated/exploratory-sales/
@@ -112,7 +115,7 @@ uv run python -m data_agent render-workspace \
   --output /tmp/render-workspace.response.json
 ```
 
-The previous model-backed validated example remains available with
+The same semantic flow with explicit result checks remains available with
 `uv run python scripts/demo_analysis.py`.
 
 ## Connect to Snowflake
@@ -186,7 +189,6 @@ See
   osi-semantic-model-builder/      BI export to OSI workflow and runnable builder
   analytics-report-generation/    Optional chart and HTML report workflow
 data_agent/                         Local semantic, Snowflake, validation, and report helpers
-data_agent/exploration.py           Flexible direct-SQL exploration contract
 data_agent/reporting/workspace.py   Markdown and Jupyter workspace generation
 semantic/models/                    OSI models searched by the analysis agent
 semantic/generated/                 Replaceable conversion output
@@ -208,8 +210,8 @@ uv run mypy data_agent
 
 Complete typed-request examples are in
 [User workflow](docs/WORKFLOW.md#typed-command-examples).
-Runnable request files for search, compile, validation, analysis, and competency tests are also
-available under `examples/`, including model-backed derived and allowlisted ad hoc metric examples.
+Runnable request files for search, compile, exploration, validation, reporting, and competency
+tests are available under `examples/`, including promoted and request-scoped derived metrics.
 
 The Snowflake connector is optional for the offline examples. The implementation and its current
 boundaries are described in [Design](docs/DESIGN.md).

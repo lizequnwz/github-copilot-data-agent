@@ -7,18 +7,20 @@ The agent follows a skill and invokes local Python commands for deterministic wo
 
 ```text
 Business question
-  -> next useful direct or model-assisted SQL query
-  -> parsed read-only execution
+  -> promoted semantic model
+  -> lightweight semantic plan
+  -> compiler-generated parameterized SQL
+  -> read-only Snowflake execution
   -> table, observations, and iterative refinement
-  -> local Markdown/notebook workspace
-  -> optional result checks and semantic stabilization
+  -> local plan-driven Markdown/notebook workspace
+  -> optional result checks
   -> exploratory or validated report
 ```
 
-Exploration is the default product loop. Semantic plans, parameterized predicates, allowlisted
-sources, explicit grain checks, and promotion are progressive assurance options rather than entry
-requirements. Read-only parsing, credential isolation, connection confirmation, timeouts,
-cancellation, fetch limits, and result-byte limits remain hard operational boundaries.
+Exploration and validation use the same semantic source path. Every query compiles from a promoted
+model; users iterate by changing dimensions, filters, ordering, time range, or a request-scoped
+derived metric. Formal result checks are progressive assurance options rather than entry
+requirements. When a promoted model lacks coverage, analysis stops and routes to Semantic Setup.
 
 Semantic models enter through a parallel builder workflow:
 
@@ -43,8 +45,6 @@ Power BI / Tableau / JSON / YAML / neutral IR / Ossie
 | `.github/skills/snowflake-analysis/` | Guides setup, semantic lookup, querying, validation, and response. |
 | `.github/skills/osi-semantic-model-builder/` | Converts BI semantic exports into OSI models. |
 | `data_agent/semantic/` | Loads, searches, validates, converts, and compiles promoted and derived semantic plans. |
-| `data_agent/ad_hoc.py` | Validates unpromoted text-to-SQL contracts against promoted and allowlisted sources. |
-| `data_agent/exploration.py` | Normalizes flexible direct SQL without requiring governance metadata. |
 | `ossie-main/` | Pinned official Apache Ossie schema, validator, examples, and converter guidance. |
 | `data_agent/bi/` | Extracts Power BI, Tableau, and generic metadata to neutral IR. |
 | `data_agent/tools/snowflake.py` | Connects with browser SSO or environment-token OAuth and runs bounded read-only operations. |
@@ -66,12 +66,10 @@ draft passes official validation, readiness checks, competency tests, and explic
 
 ## Deliberate limits
 
-- Exploratory mode permits direct SQL, literal predicates, missing semantic metadata, and queries
-  without explicit SQL limits; returned rows still respect local fetch and byte protections.
 - The semantic compiler supports promoted and request-scoped derived metrics, dimensions,
   parameterized filters, bounded time ranges, selected-projection ordering, and simple join paths.
-- Ad hoc text-to-SQL requires explicit output aliases, formula and assumptions, positional filter
-  parameters, a `max_rows + 1` limit, and sources from promoted models or `allowed_objects`.
+- Ask Data does not execute arbitrary text-to-SQL. Missing source, field, or relationship coverage
+  is a Semantic Setup task.
 - Power BI and Tableau conversion does not attempt full DAX, M, LOD, table-calculation, parameter,
   filter, or role translation.
 - Binary PBIX and packaged TWBX files must be exported or unpacked before conversion.
@@ -83,8 +81,8 @@ These boundaries are surfaced as errors or manifest review items instead of bein
 ## Useful safeguards
 
 Browser SSO or environment-token OAuth, explicit context confirmation, read-only SQL parsing,
-query timeouts, cancellation, and row/byte protections remain part of the local workflow.
-Allowlisted sources, explicit columns, parameterized predicate values, and result-grain validation
-are opt-in assurance controls. Optional role, warehouse, database, and schema values are preferred
-defaults rather than connection blockers. Exploratory, derived, and ad hoc metrics are labeled
+model-bound sources, explicit projections, parameterized predicate values, query timeouts,
+cancellation, and row/byte protections remain part of the local workflow. Result-grain and content
+checks are opt-in assurance controls. Optional role, warehouse, database, and schema values are
+preferred defaults rather than connection blockers. Request-scoped derived metrics are labeled
 unpromoted and never update shared semantics implicitly.

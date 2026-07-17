@@ -1,13 +1,13 @@
-# Exploratory analysis workspace
+# Semantic exploration workspace
 
-The default Ask Data experience is an iterative analytical loop rather than a governance workflow:
+Ask Data has one core workflow:
 
 ```text
-question -> SQL -> read-only query -> inspect -> chart -> refine -> share
+question -> promoted model -> semantic plan -> generated SQL -> inspect -> refine -> share
 ```
 
-Semantic models and validation remain available when a useful exploration becomes a recurring
-analysis, shared metric, or published decision artifact.
+Every query uses a promoted model. Exploration stays lightweight because result checks are optional
+and the notebook makes the plan easy to edit.
 
 ## Quick start
 
@@ -18,8 +18,8 @@ uv sync --extra dev
 uv run python scripts/demo_exploration.py
 ```
 
-This writes `analysis.md`, `analysis.ipynb`, and the corresponding request/response JSON under
-`reports/generated/exploratory-sales/`.
+This compiles `semantic/models/demo_sales.yaml` and writes `analysis.md`, `analysis.ipynb`, and the
+request/response JSON under `reports/generated/exploratory-sales/`.
 
 For the full notebook environment:
 
@@ -28,85 +28,83 @@ uv sync --extra notebook
 uv run jupyter lab reports/generated/exploratory-sales/analysis.ipynb
 ```
 
-## Flexible SQL request
+## Minimal exploratory request
 
-Exploratory requests need SQL and little else:
+An exploration needs a promoted model and a small semantic plan:
 
 ```json
 {
   "request_id": "quick-look",
-  "analysis_mode": "exploratory",
-  "question": "What changed by region?",
-  "sql": "SELECT region, SUM(amount) AS sales FROM DB.SCHEMA.ORDERS GROUP BY region",
-  "parameters": [],
-  "execute": true,
-  "configuration_confirmed": true
+  "question": "How do completed-order sales compare across regions?",
+  "model_path": "semantic/models/demo_sales.yaml",
+  "plan": {
+    "semantic_model": "demo_sales",
+    "metric_ids": ["gross_sales"],
+    "dimensions": ["orders.region"],
+    "filters": [
+      {"field": "orders.status", "operator": "=", "value": "completed"}
+    ],
+    "order_by": [{"field": "gross_sales", "direction": "desc"}],
+    "max_rows": 100
+  }
 }
 ```
 
-`analysis_mode` may be omitted when the request has SQL and no `model_path`. Projection wildcards,
-literal filters, queries without an explicit `LIMIT`, missing formula metadata, and sources outside
-`allowed_objects` or configured blocked-schema lists are accepted in exploratory mode. Snowflake
-role permissions remain authoritative for data access.
+The compiler resolves physical sources, model-defined joins, filter expressions, parameters,
+aliases, ordering, and the query limit. The response includes the normalized plan and generated SQL.
 
-Snowflake execution still permits only a parsed read-only query. Tokens stay in the environment,
-the non-secret connection context must be confirmed, and configured timeout, fetched-row, and
-result-byte protections remain active.
+If the model has the required fields but lacks a shared metric, add a request-scoped
+`derived_metrics` expression using qualified promoted fields. The result remains explicitly
+unpromoted. If required fields or relationships are missing, use Semantic Setup; Ask Data does not
+bypass the model with arbitrary SQL.
 
 ## Notebook behavior
 
 The generated notebook contains:
 
-1. Saved analysis evidence.
-2. Editable question, SQL, parameters, and row-fetch target.
-3. An opt-in live execution cell routed through `data_agent.analysis.analyze`.
-4. A pandas table and a quick configurable chart.
-5. An optional self-contained exploratory HTML report.
-6. Guidance for moving the exploration toward validation.
+1. Saved semantic analysis evidence.
+2. Editable question, `MODEL_PATH`, and `PLAN`.
+3. Compiler-generated SQL and parameters.
+4. An opt-in live execution cell routed through `data_agent.analysis.analyze`.
+5. A pandas table and quick configurable chart.
+6. An optional self-contained HTML report.
+7. A switch for adding result validation later.
 
-`USE_SAVED_RESPONSE` defaults to `True`, so Run All preserves the saved result. Set it to `False`
-to re-plan edited SQL. `RUN_LIVE` defaults to `False` so that step still does not unexpectedly query
-Snowflake. Set `RUN_LIVE = True` and `CONFIGURATION_CONFIRMED = True` after reviewing the configured
-context.
+`USE_SAVED_RESPONSE` defaults to `True`, so Run All preserves saved evidence. Set it to `False` to
+compile the edited plan. `RUN_LIVE` defaults to `False`; set it to `True` with
+`CONFIGURATION_CONFIRMED = True` only after reviewing the non-secret Snowflake context.
 
-Do not create a raw Snowflake connection in notebook cells. Routing reruns through `analyze`
-preserves read-only parsing, authentication handling, timeouts, query IDs, serialization, and local
-result protections.
+The generated SQL is visible but is not the notebook's editable source. Change the plan or
+request-scoped derived expression and let the compiler regenerate SQL. This keeps exploratory work
+consistent with shared sources, relationships, and field definitions.
 
-## Optional validation
+## Optional result validation
 
-Exploratory results return `result_validation.status: not_run` unless the request includes
-`result_checks` or sets `validate_result: true`.
+Results return `result_validation.status: not_run` unless `validate_result: true` or
+`result_checks` is present.
 
-Add checks when they answer a real assurance need:
+Add only checks that answer a real assurance need:
 
 ```json
 {
   "validate_result": true,
-  "result_grain": ["region"],
   "result_checks": {
-    "required_columns": ["region", "sales"],
+    "grain": ["region"],
+    "required_columns": ["region", "gross_sales"],
     "required_non_null": ["region"],
-    "numeric_ranges": {"sales": {"min": 0}}
+    "numeric_ranges": {"gross_sales": {"min": 0}}
   }
 }
 ```
 
-Other maturity options are:
+Exploration and validation use the same promoted model and semantic plan. Validation changes the
+assurance level, not how SQL is sourced.
 
-- move a repeated calculation to a request-scoped derived metric;
-- compile through a promoted semantic model;
-- use governed ad hoc mode for parameter and source contracts;
-- promote a shared definition through Semantic Setup.
+## Reports and promotion
 
-These steps increase repeatability and confidence without blocking the initial investigation.
+HTML reports may be created before result checks run and display **Exploratory · not validated**.
+Validated reports retain the same model, plan, generated SQL, and query evidence.
 
-## Reports and publishing
-
-HTML reports may be rendered from exploratory or validated results. Reports without passing checks
-display **Exploratory · not validated**. Failed checks remain blocking because publishing a known
-failure as if it were usable would be misleading.
-
-All generated work stays under `reports/generated/` and is ignored by Git. Review data sensitivity,
-definitions, freshness, and caveats before moving an artifact into a committed or externally shared
-location.
+A request-scoped derived metric can be useful for many explorations without becoming shared
+semantics. Promote it only through Semantic Setup after definition review and competency checks.
+Generated analytical work stays under `reports/generated/` and is ignored by Git.

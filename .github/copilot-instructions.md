@@ -6,7 +6,7 @@ Follow `AGENTS.md` as the authoritative project contract. For end-to-end user wo
 ## Local commands
 
 - Install: `uv sync --extra dev --extra snowflake`
-- Offline walkthrough: `uv run python scripts/demo_analysis.py`
+- Offline exploration walkthrough: `uv run python scripts/demo_exploration.py`
 - CLI tools: `uv run python -m data_agent`
 - Validation: `uv run python scripts/validate_project.py`
 - Tests: `uv run python -m unittest discover -s tests -v`

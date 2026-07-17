@@ -14,9 +14,9 @@ uv sync --extra dev
 uv run python scripts/demo_exploration.py
 ```
 
-This uses synthetic rows and writes `analysis.md` and `analysis.ipynb` under
-`reports/generated/exploratory-sales/`. It does not connect to Snowflake. The model-backed,
-validated walkthrough remains available through `scripts/demo_analysis.py`.
+This compiles the promoted `demo_sales` model against synthetic rows and writes `analysis.md` and
+`analysis.ipynb` under `reports/generated/exploratory-sales/`. It does not connect to Snowflake.
+The same semantic flow with explicit result checks is available through `scripts/demo_analysis.py`.
 
 To trigger the conversational workflow:
 
@@ -25,15 +25,18 @@ To trigger the conversational workflow:
 - In GitHub Copilot CLI, use `/agent` and select `data-analytics`, or start a request with
   `copilot --agent=data-analytics --prompt "..."`.
 
-The agent first selects **Ask Data** or **Semantic Setup**, then chooses the smallest relevant skill:
+The agent first routes to **Ask Data** or **Semantic Setup**, then chooses the smallest relevant skill:
 `snowflake-analysis` for data questions, `osi-semantic-model-builder` for semantic onboarding, and
 `analytics-report-generation` for an explicitly requested chart or report.
 
+These are top-level product routes. Ask Data has one analysis flow; “exploratory” and “validated”
+only indicate whether optional result checks have run.
+
 ## Visual workflow guides
 
-- [Business question to validated answer](diagrams/data-question-workflow.html) shows the optional
-  assurance path after an exploration has stabilized: semantic compilation, connection
-  confirmation, bounded execution, result-grain validation, and reporting.
+- [Business question to semantic exploration](diagrams/data-question-workflow.html) shows the
+  single Ask Data path: model selection, plan editing, generated SQL, execution, notebook
+  iteration, and optional result validation.
 - [Semantic layer creation and review](diagrams/semantic-layer-review.html) shows the normal BI
   intake, deterministic conversion, object-level refresh impact, parallel Business and Analyst
   views, audited decisions, competency-gated validation, and promotion path.
@@ -47,45 +50,43 @@ Archify sources live beside them as
 
 Select the `data-analytics` Copilot agent and provide the business question in ordinary language:
 
-> Explore completed-order sales by region. Show the SQL and create a notebook so I can adjust it.
+> Explore completed-order sales by region using the shared model. Show the generated SQL and create
+> a notebook where I can adjust the semantic plan.
 
-Users may start with:
-
-- a question or hypothesis;
-- partial or complete SQL;
-- one or more table names;
-- a request to profile, compare, trend, segment, or visualize data.
-
-The agent asks only what is needed to make the next query useful. It may inspect
-`semantic/models/`, but direct SQL does not require model coverage, formula metadata, an object
-allowlist, parameterized predicates, a declared result grain, or an explicit SQL `LIMIT`.
+Users start with a question or hypothesis. The agent asks only what is needed to make the next
+semantic plan useful, searches `semantic/models/`, and selects a promoted model. If the model lacks
+the required field or relationship, the agent routes to Semantic Setup instead of bypassing it.
 
 ```text
 Question or hypothesis
-Next useful read-only SQL query
+Promoted semantic model
+Editable semantic plan
+Compiler-generated read-only SQL
 Result table and query details
 Observation, chart, or follow-up experiment
 Optional Markdown/notebook workspace
 ```
 
-SQL-only requests default to `analysis_mode: exploratory`. They remain explicitly unpromoted.
-Snowflake execution still uses parsed read-only statements, confirmed non-secret connection
-context, query timeouts, cancellation support, and local fetch/byte protections.
+The plan may use promoted metrics or request-scoped derived metrics over qualified promoted fields.
+The compiler owns sources, joins, parameters, aliases, ordering, and the query limit. Derived
+metrics remain explicitly unpromoted.
 
 For a live query, expect:
 
 ```text
 Finding or next experiment
+Semantic model and metric source
+Normalized plan
 Query ID and role
-SQL
+Generated SQL
 Returned rows and truncation status
 Useful caveats or follow-up questions
 Markdown/notebook links when generated
 ```
 
 Exploratory results return `result_validation.status: not_run` by default. Add
-`validate_result: true` or explicit `result_checks` when assurance becomes useful. Teams may then
-move stable logic to a derived metric, a promoted semantic plan, or the governed ad hoc contract.
+`validate_result: true` or explicit `result_checks` when assurance becomes useful. Exploration and
+validation always use the same promoted model and plan.
 See [Exploratory analysis workspace](EXPLORATORY_ANALYSIS.md) for the complete notebook and
 progressive-validation workflow.
 
@@ -233,7 +234,7 @@ result checks are visibly labeled **Exploratory · not validated**.
 
 All commands use the same `--input REQUEST.json --output RESPONSE.json` contract.
 
-Run a flexible SQL exploration:
+Run a lightweight semantic exploration:
 
 ```bash
 uv run python -m data_agent analyze \
@@ -249,7 +250,8 @@ uv run python -m data_agent render-workspace \
   --output /tmp/render-workspace.response.json
 ```
 
-The remaining examples show optional semantic, validation, and promotion paths.
+The remaining examples show semantic search, request-scoped derived metrics, validation, and
+promotion paths.
 
 Search promoted semantics:
 
@@ -287,19 +289,6 @@ uv run python -m data_agent osi-compile \
   --input examples/analysis/average-order-value-derived.json \
   --output /tmp/average-order-value-derived.response.json
 ```
-
-Validate an unpromoted text-to-SQL plan over a promoted or allowlisted source:
-
-```bash
-uv run python -m data_agent analyze \
-  --input examples/analysis/average-order-value-ad-hoc.json \
-  --output /tmp/average-order-value-ad-hoc.response.json
-```
-
-The offline ad hoc example reads source controls from `snowflake_config.example.yaml`; no connection
-occurs unless the request also sets `execute: true`. Use a completed local `snowflake_config.yaml`
-for live execution. Predicate values must use `%s` placeholders, every output must have a stable
-name, and the SQL limit must equal `max_rows + 1`.
 
 Run the complete offline analysis with
 `examples/analysis/sales-by-region.json`. Validate OSI with:

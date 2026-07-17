@@ -96,7 +96,7 @@ def _analysis_markdown(
         sections.extend(_result_markdown(result))
     sections.extend(
         [
-            "## Analysis contract",
+            "## Semantic plan",
             "",
             "```json",
             json.dumps(
@@ -204,6 +204,8 @@ def _analysis_notebook(
             "    'execute': RUN_LIVE,\n"
             "    'validate_result': VALIDATE_RESULT,\n"
             "}\n"
+            "if not VALIDATE_RESULT:\n"
+            "    analysis_request.pop('result_checks', None)\n"
             "if USE_SAVED_RESPONSE:\n"
             "    response = SAVED_RESPONSE\n"
             "else:\n"

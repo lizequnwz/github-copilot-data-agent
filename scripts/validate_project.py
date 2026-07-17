@@ -38,22 +38,25 @@ def main() -> int:
         "ossie-main/validation/validate.py",
         "ossie-main/LICENSE",
         "docs/DESIGN.md",
+        "docs/EXPLORATORY_ANALYSIS.md",
         "docs/WORKFLOW.md",
         "docs/SEMANTIC_MODELS.md",
         "examples/analysis/sales-by-region.json",
         "examples/analysis/sales-by-segment.json",
+        "examples/analysis/exploratory-sales.json",
         "examples/analysis/average-order-value-derived.json",
-        "examples/analysis/average-order-value-ad-hoc.json",
         "examples/requests/osi-compile.json",
         "examples/requests/osi-search.json",
         "examples/requests/osi-test.json",
         "examples/requests/osi-validate.json",
         "examples/requests/render-chart.json",
         "examples/requests/render-report.json",
+        "examples/requests/render-workspace.json",
         "data_agent/semantic/competency.py",
         "data_agent/semantic/diff.py",
         "scripts/check_snowflake.py",
         "scripts/demo_analysis.py",
+        "scripts/demo_exploration.py",
     ]
     for item in required:
         if not (ROOT / item).is_file():
@@ -89,14 +92,15 @@ def main() -> int:
         json.loads(SCHEMA.read_text())
         json.loads((ROOT / "examples/analysis/sales-by-region.json").read_text())
         json.loads((ROOT / "examples/analysis/sales-by-segment.json").read_text())
+        json.loads((ROOT / "examples/analysis/exploratory-sales.json").read_text())
         json.loads((ROOT / "examples/analysis/average-order-value-derived.json").read_text())
-        json.loads((ROOT / "examples/analysis/average-order-value-ad-hoc.json").read_text())
         json.loads((ROOT / "examples/requests/osi-compile.json").read_text())
         json.loads((ROOT / "examples/requests/osi-search.json").read_text())
         json.loads((ROOT / "examples/requests/osi-test.json").read_text())
         json.loads((ROOT / "examples/requests/osi-validate.json").read_text())
         json.loads((ROOT / "examples/requests/render-chart.json").read_text())
         json.loads((ROOT / "examples/requests/render-report.json").read_text())
+        json.loads((ROOT / "examples/requests/render-workspace.json").read_text())
         yaml.safe_load((ROOT / "snowflake_config.example.yaml").read_text())
         yaml.safe_load((ROOT / "semantic/tests/demo_sales.yaml").read_text())
     except Exception as exc:

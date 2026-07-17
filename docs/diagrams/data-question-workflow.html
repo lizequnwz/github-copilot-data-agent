@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="generator" content="archify 2.10.0">
-  <title>Ask Data: Business Question to Validated Answer Diagram</title>
+  <title>Ask Data: Semantic Model to Exploration Diagram</title>
   <script>
     // Resolve the theme before first paint so light-preference users don't
     // see a dark flash. The toolbar script below re-applies with UI state.
@@ -525,14 +525,14 @@
     <div class="header">
       <div class="header-row">
         <div class="pulse-dot"></div>
-        <h1>Ask Data: Business Question to Validated Answer</h1>
+        <h1>Ask Data: Semantic Model to Exploration</h1>
       </div>
-      <p class="subtitle">Promoted, derived, or allowlisted analysis with bounded Snowflake execution and reproducible reporting</p>
+      <p class="subtitle">One model-first path with plan-driven iteration and optional result validation</p>
     </div>
 
     <!-- Main Diagram -->
     <div class="diagram-container">
-      <svg viewBox="0 0 720 900" role="img" aria-label="Ask Data: Business Question to Validated Answer — Promoted, derived, or allowlisted analysis with bounded Snowflake execution and reproducible reporting (workflow diagram)">
+      <svg viewBox="0 0 720 1024" role="img" aria-label="Ask Data: Semantic Model to Exploration — One model-first path with plan-driven iteration and optional result validation (workflow diagram)">
         <!-- Definitions -->
         <defs>
           <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -557,114 +557,115 @@
 
         <!-- Swimlanes -->
         <rect x="40" y="52" width="640" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="74" class="t-dim" font-size="10" font-weight="600">01 / Business user</text>
+        <text x="54" y="74" class="t-dim" font-size="10" font-weight="600">01 / Analyst or product owner</text>
 
         <rect x="40" y="176" width="640" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="198" class="t-dim" font-size="10" font-weight="600">02 / Data agent</text>
 
         <rect x="40" y="300" width="640" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="322" class="t-dim" font-size="10" font-weight="600">03 / Approved semantic sources</text>
+        <text x="54" y="322" class="t-dim" font-size="10" font-weight="600">03 / Promoted semantic models</text>
 
         <rect x="40" y="424" width="640" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="446" class="t-dim" font-size="10" font-weight="600">04 / Read-only Snowflake</text>
 
         <rect x="40" y="548" width="640" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="570" class="t-dim" font-size="10" font-weight="600">05 / Validated result</text>
+        <text x="54" y="570" class="t-dim" font-size="10" font-weight="600">05 / Analysis workspace</text>
 
         <rect x="40" y="672" width="640" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <rect x="46" y="678" width="628" height="92" rx="8" class="c-security-group" stroke-width="1"/>
-        <text x="54" y="694" class="t-security" font-size="10" font-weight="600">EX / Clarification or model enhancement</text>
+        <text x="54" y="694" class="t-dim" font-size="10" font-weight="600">06 / Optional assurance</text>
+
+        <rect x="40" y="796" width="640" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect x="46" y="802" width="628" height="92" rx="8" class="c-security-group" stroke-width="1"/>
+        <text x="54" y="818" class="t-security" font-size="10" font-weight="600">EX / Coverage gap</text>
 
         <!-- Phase headers -->
-        <line x1="42" y1="35" x2="266" y2="35" class="a-default" stroke-width="1.1"/>
-        <rect x="42" y="27" width="224" height="16" rx="4" class="c-mask"/>
-        <text x="154" y="39" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">Interpret</text>
-        <line x1="254" y1="35" x2="476" y2="35" class="a-security" stroke-width="1.1"/>
-        <rect x="254" y="27" width="222" height="16" rx="4" class="c-mask"/>
-        <text x="365" y="39" class="t-security" font-size="8" font-weight="600" text-anchor="middle">Resolve + compile</text>
+        <line x1="42" y1="35" x2="134" y2="35" class="a-default" stroke-width="1.1"/>
+        <rect x="42" y="27" width="92" height="16" rx="4" class="c-mask"/>
+        <text x="88" y="39" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">Ask</text>
+        <line x1="174" y1="35" x2="346" y2="35" class="a-security" stroke-width="1.1"/>
+        <rect x="174" y="27" width="172" height="16" rx="4" class="c-mask"/>
+        <text x="260" y="39" class="t-security" font-size="8" font-weight="600" text-anchor="middle">Resolve model + plan</text>
+        <line x1="384" y1="35" x2="476" y2="35" class="a-dashed" stroke-width="1.1"/>
+        <rect x="384" y="27" width="92" height="16" rx="4" class="c-mask"/>
+        <text x="430" y="39" class="t-messagebus" font-size="8" font-weight="600" text-anchor="middle">Generate SQL</text>
         <line x1="454" y1="35" x2="546" y2="35" class="a-dashed" stroke-width="1.1"/>
         <rect x="454" y="27" width="92" height="16" rx="4" class="c-mask"/>
-        <text x="500" y="39" class="t-messagebus" font-size="8" font-weight="600" text-anchor="middle">Execute</text>
+        <text x="500" y="39" class="t-messagebus" font-size="8" font-weight="600" text-anchor="middle">Run</text>
         <line x1="579" y1="35" x2="671" y2="35" class="a-emphasis" stroke-width="1.1"/>
         <rect x="579" y="27" width="92" height="16" rx="4" class="c-mask"/>
-        <text x="625" y="39" class="t-backend" font-size="8" font-weight="600" text-anchor="middle">Communicate</text>
+        <text x="625" y="39" class="t-backend" font-size="8" font-weight="600" text-anchor="middle">Explore + share</text>
 
         <!-- Workflow groups -->
 
 
         <!-- Edge paths -->
-        <path d="M 88 145 L 88 166 L 220 166 L 220 209" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 220 277 L 220 290 L 300 290 L 300 333" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 300 333 L 300 290 L 430 290 L 430 277" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 430 209 L 430 166 L 500 166 L 500 153" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 500 153 L 500 290 L 500 290 L 500 457" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 500 525 L 500 538 L 500 538 L 500 589" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 546 615 L 579 615" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 220 277 L 220 476 L 220 476 L 220 713" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path d="M 430 277 L 430 476 L 430 476 L 430 713" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
-        <path d="M 500 641 L 500 662 L 625 662 L 625 713" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path d="M 88 145 L 88 228 L 220 228 L 220 333" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 220 333 L 220 290 L 300 290 L 300 277" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 346 243 L 384 243" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 430 209 L 430 166 L 500 166 L 500 145" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 500 145 L 500 290 L 500 290 L 500 465" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 500 517 L 500 538 L 625 538 L 625 581" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 671 615 L 692 615 L 692 119 L 680 119" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 625 649 L 625 662 L 625 662 L 625 705" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path d="M 680 739 L 692 739 L 692 119 L 680 119" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 220 401 L 220 600 L 300 600 L 300 829" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
 
         <!-- Nodes -->
         <rect x="42" y="93" width="92" height="52" rx="6" class="c-mask"/>
         <rect x="42" y="93" width="92" height="52" rx="6" class="c-external" stroke-width="1.5"/>
         <text x="88" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Ask question</text>
-        <text x="88" y="131" class="t-muted" font-size="8" text-anchor="middle">business outcome + output</text>
+        <text x="88" y="131" class="t-muted" font-size="8" text-anchor="middle">outcome or hypothesis</text>
 
-        <rect x="174" y="209" width="92" height="68" rx="6" class="c-mask"/>
-        <rect x="174" y="209" width="92" height="68" rx="6" class="c-backend" stroke-width="1.5"/>
-        <text x="220" y="230" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Interpret</text>
-        <text x="220" y="247" class="t-muted" font-size="8" text-anchor="middle">metric / population / grain</text>
-        <text x="220" y="265" class="t-backend" font-size="7" text-anchor="middle">compact card</text>
+        <rect x="570" y="93" width="110" height="52" rx="6" class="c-mask"/>
+        <rect x="570" y="93" width="110" height="52" rx="6" class="c-frontend" stroke-width="1.5"/>
+        <text x="625" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Finding / report</text>
+        <text x="625" y="131" class="t-muted" font-size="8" text-anchor="middle">model + SQL + caveats</text>
 
-        <rect x="254" y="333" width="92" height="68" rx="6" class="c-mask"/>
-        <rect x="254" y="333" width="92" height="68" rx="6" class="c-database" stroke-width="1.5"/>
-        <text x="300" y="354" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Resolve source</text>
-        <text x="300" y="371" class="t-muted" font-size="8" text-anchor="middle">promoted / derived / ad hoc</text>
-        <text x="300" y="389" class="t-database" font-size="7" text-anchor="middle">approved objects</text>
+        <rect x="254" y="209" width="92" height="68" rx="6" class="c-mask"/>
+        <rect x="254" y="209" width="92" height="68" rx="6" class="c-backend" stroke-width="1.5"/>
+        <text x="300" y="230" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Build plan</text>
+        <text x="300" y="247" class="t-muted" font-size="8" text-anchor="middle">metric / dimensions / filters</text>
+        <text x="300" y="265" class="t-backend" font-size="7" text-anchor="middle">lightweight</text>
 
         <rect x="384" y="209" width="92" height="68" rx="6" class="c-mask"/>
-        <rect x="384" y="209" width="92" height="68" rx="6" class="c-security" stroke-width="1.5"/>
-        <text x="430" y="230" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Compile / validate</text>
-        <text x="430" y="247" class="t-muted" font-size="8" text-anchor="middle">formula / filters / order</text>
-        <text x="430" y="265" class="t-security" font-size="7" text-anchor="middle">validate SQL</text>
+        <rect x="384" y="209" width="92" height="68" rx="6" class="c-backend" stroke-width="1.5"/>
+        <text x="430" y="230" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Compile SQL</text>
+        <text x="430" y="247" class="t-muted" font-size="8" text-anchor="middle">sources / joins / parameters</text>
+        <text x="430" y="265" class="t-backend" font-size="7" text-anchor="middle">model generated</text>
 
-        <rect x="454" y="85" width="92" height="68" rx="6" class="c-mask"/>
-        <rect x="454" y="85" width="92" height="68" rx="6" class="c-security" stroke-width="1.5"/>
-        <text x="500" y="106" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Confirm</text>
-        <text x="500" y="123" class="t-muted" font-size="8" text-anchor="middle">non-secret settings</text>
-        <text x="500" y="141" class="t-security" font-size="7" text-anchor="middle">first connection</text>
+        <rect x="174" y="333" width="92" height="68" rx="6" class="c-mask"/>
+        <rect x="174" y="333" width="92" height="68" rx="6" class="c-database" stroke-width="1.5"/>
+        <text x="220" y="354" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Select model</text>
+        <text x="220" y="371" class="t-muted" font-size="8" text-anchor="middle">promoted definitions</text>
+        <text x="220" y="389" class="t-database" font-size="7" text-anchor="middle">always required</text>
 
-        <rect x="454" y="457" width="92" height="68" rx="6" class="c-mask"/>
-        <rect x="454" y="457" width="92" height="68" rx="6" class="c-cloud" stroke-width="1.5"/>
-        <text x="500" y="478" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Execute query</text>
-        <text x="500" y="495" class="t-muted" font-size="8" text-anchor="middle">browser SSO + read-only</text>
-        <text x="500" y="513" class="t-cloud" font-size="7" text-anchor="middle">max_rows + 1</text>
+        <rect x="445" y="93" width="110" height="52" rx="6" class="c-mask"/>
+        <rect x="445" y="93" width="110" height="52" rx="6" class="c-security" stroke-width="1.5"/>
+        <text x="500" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Confirm context</text>
+        <text x="500" y="131" class="t-muted" font-size="8" text-anchor="middle">non-secret settings</text>
 
-        <rect x="454" y="589" width="92" height="52" rx="6" class="c-mask"/>
-        <rect x="454" y="589" width="92" height="52" rx="6" class="c-security" stroke-width="1.5"/>
-        <text x="500" y="610" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Check result</text>
-        <text x="500" y="627" class="t-muted" font-size="8" text-anchor="middle">shape / grain / truncation</text>
+        <rect x="454" y="465" width="92" height="52" rx="6" class="c-mask"/>
+        <rect x="454" y="465" width="92" height="52" rx="6" class="c-cloud" stroke-width="1.5"/>
+        <text x="500" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Execute query</text>
+        <text x="500" y="503" class="t-muted" font-size="8" text-anchor="middle">read-only + bounded fetch</text>
 
         <rect x="579" y="581" width="92" height="68" rx="6" class="c-mask"/>
         <rect x="579" y="581" width="92" height="68" rx="6" class="c-frontend" stroke-width="1.5"/>
-        <text x="625" y="602" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Answer</text>
-        <text x="625" y="619" class="t-muted" font-size="8" text-anchor="middle">definition / SQL / caveats</text>
-        <text x="625" y="637" class="t-frontend" font-size="7" text-anchor="middle">optional report</text>
+        <text x="625" y="602" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Explore</text>
+        <text x="625" y="619" class="t-muted" font-size="8" text-anchor="middle">plan / table / chart / notebook</text>
+        <text x="625" y="637" class="t-frontend" font-size="7" text-anchor="middle">iterate</text>
 
-        <rect x="174" y="713" width="92" height="52" rx="6" class="c-mask"/>
-        <rect x="174" y="713" width="92" height="52" rx="6" class="c-messagebus" stroke-width="1.5"/>
-        <text x="220" y="734" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Clarify</text>
-        <text x="220" y="751" class="t-muted" font-size="8" text-anchor="middle">material business choice</text>
+        <rect x="570" y="705" width="110" height="68" rx="6" class="c-mask"/>
+        <rect x="570" y="705" width="110" height="68" rx="6" class="c-security" stroke-width="1.5"/>
+        <text x="625" y="726" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Validate result</text>
+        <text x="625" y="743" class="t-muted" font-size="8" text-anchor="middle">grain / nulls / ranges</text>
+        <text x="625" y="761" class="t-security" font-size="7" text-anchor="middle">optional</text>
 
-        <rect x="372" y="713" width="116" height="52" rx="6" class="c-mask"/>
-        <rect x="372" y="713" width="116" height="52" rx="6" class="c-messagebus" stroke-width="1.5"/>
-        <text x="430" y="734" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Narrow / enhance</text>
-        <text x="430" y="751" class="t-muted" font-size="8" text-anchor="middle">unsupported semantic operation</text>
-
-        <rect x="579" y="713" width="92" height="52" rx="6" class="c-mask"/>
-        <rect x="579" y="713" width="92" height="52" rx="6" class="c-messagebus" stroke-width="1.5"/>
-        <text x="625" y="734" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Fix and retry</text>
-        <text x="625" y="751" class="t-muted" font-size="8" text-anchor="middle">config / SQL / result issue</text>
+        <rect x="254" y="829" width="92" height="68" rx="6" class="c-mask"/>
+        <rect x="254" y="829" width="92" height="68" rx="6" class="c-messagebus" stroke-width="1.5"/>
+        <text x="300" y="850" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Semantic Setup</text>
+        <text x="300" y="867" class="t-muted" font-size="8" text-anchor="middle">add field / join / metric</text>
+        <text x="300" y="885" class="t-messagebus" font-size="7" text-anchor="middle">no SQL bypass</text>
 
         <!-- Edge labels -->
 
@@ -674,25 +675,25 @@
 
 
 
-        <rect x="171.8" y="456" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
-        <text x="220" y="466" class="t-database" font-size="8" text-anchor="middle">material ambiguity</text>
-        <rect x="398.6" y="529" width="62.8" height="14" rx="3" class="c-mask"/>
-        <text x="430" y="539" class="t-security" font-size="8" text-anchor="middle">unsupported</text>
-        <rect x="541.2" y="653" width="43.6" height="14" rx="3" class="c-mask"/>
-        <text x="563" y="663" class="t-security" font-size="8" text-anchor="middle">invalid</text>
+        <rect x="586.4" y="653" width="77.2" height="14" rx="3" class="c-mask"/>
+        <text x="625" y="663" class="t-security" font-size="8" text-anchor="middle">need assurance</text>
+        <rect x="660.6" y="409" width="62.8" height="14" rx="3" class="c-mask"/>
+        <text x="692" y="419" class="t-backend" font-size="8" text-anchor="middle">checks pass</text>
+        <rect x="226.2" y="580" width="67.6" height="14" rx="3" class="c-mask"/>
+        <text x="260" y="590" class="t-security" font-size="8" text-anchor="middle">coverage gap</text>
 
         <!-- Legend -->
-        <text x="175" y="800" class="t-primary" font-size="10" font-weight="600">Legend</text>
-        <rect x="175" y="812" width="14" height="9" rx="2" class="c-frontend" stroke-width="1"/>
-        <text x="195" y="820" class="t-muted" font-size="7">User UI</text>
-        <rect x="260" y="812" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
-        <text x="280" y="820" class="t-muted" font-size="7">Agent logic</text>
-        <rect x="370" y="812" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
-        <text x="390" y="820" class="t-muted" font-size="7">Policy</text>
-        <rect x="455" y="812" width="14" height="9" rx="2" class="c-messagebus" stroke-width="1"/>
-        <text x="475" y="820" class="t-muted" font-size="7">Tool action</text>
-        <rect x="565" y="812" width="14" height="9" rx="2" class="c-database" stroke-width="1"/>
-        <text x="585" y="820" class="t-muted" font-size="7">Context / trace</text>
+        <text x="175" y="924" class="t-primary" font-size="10" font-weight="600">Legend</text>
+        <rect x="175" y="936" width="14" height="9" rx="2" class="c-frontend" stroke-width="1"/>
+        <text x="195" y="944" class="t-muted" font-size="7">User UI</text>
+        <rect x="260" y="936" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
+        <text x="280" y="944" class="t-muted" font-size="7">Agent logic</text>
+        <rect x="370" y="936" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
+        <text x="390" y="944" class="t-muted" font-size="7">Policy</text>
+        <rect x="455" y="936" width="14" height="9" rx="2" class="c-messagebus" stroke-width="1"/>
+        <text x="475" y="944" class="t-muted" font-size="7">Tool action</text>
+        <rect x="565" y="936" width="14" height="9" rx="2" class="c-database" stroke-width="1"/>
+        <text x="585" y="944" class="t-muted" font-size="7">Context / trace</text>
       </svg>
     </div>
 
@@ -701,33 +702,33 @@
       <div class="card">
         <div class="card-header">
           <div class="card-dot cyan"></div>
-          <h3>Interpretation contract</h3>
+          <h3>One semantic path</h3>
         </div>
         <ul>
-          <li>&bull; Show metric or formula, population, dimensions, filters, period, grain, source mode, and output</li>
-          <li>&bull; Proceed without another approval when business definitions are unambiguous</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-dot rose"></div>
-          <h3>Compiler + execution contract</h3>
-        </div>
-        <ul>
-          <li>&bull; Preserve semantic grain and map it to unique SQL result aliases</li>
-          <li>&bull; Compile parameterized filters and time bounds; fetch one extra row to prove truncation</li>
+          <li>&bull; Every Ask Data request selects a promoted model and semantic plan</li>
+          <li>&bull; The compiler owns sources, joins, parameters, aliases, and SQL limits</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot emerald"></div>
-          <h3>Inspectable answer</h3>
+          <h3>Exploration without bypass</h3>
         </div>
         <ul>
-          <li>&bull; Return period, grain, source mode, formula, query details, SQL, and caveats</li>
-          <li>&bull; Label derived and ad hoc metrics unpromoted and keep them out of shared semantics</li>
+          <li>&bull; Edit dimensions, filters, time range, ordering, or a derived expression</li>
+          <li>&bull; Notebook reruns regenerate SQL from the same semantic model</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot rose"></div>
+          <h3>Progressive assurance</h3>
+        </div>
+        <ul>
+          <li>&bull; Result checks are optional until the analysis needs more confidence</li>
+          <li>&bull; Missing model coverage routes to Semantic Setup instead of arbitrary SQL</li>
         </ul>
       </div>
     </div>

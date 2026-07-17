@@ -1,6 +1,6 @@
 ---
 name: analytics-report-generation
-description: Render an accessible SVG chart or self-contained responsive HTML report from exploratory or validated analytical results.
+description: Render an accessible SVG chart, semantic-plan notebook, or self-contained HTML report from exploratory or validated model-generated results.
 allowed-tools: ["read", "search", "edit", "execute"]
 ---
 
@@ -26,6 +26,10 @@ uv run python -m data_agent COMMAND --input REQUEST.json --output RESPONSE.json
 Reports may be created before formal result validation. When validation is absent or `not_run`, the
 renderer labels the report **Exploratory · not validated**. A report with failed checks must not be
 rendered until the failure is resolved or the user intentionally starts a new exploration.
+
+Every artifact must retain the promoted semantic model, metric provenance, normalized plan, and
+compiler-generated SQL. Notebook edits change the plan; they do not replace generated SQL with an
+arbitrary query.
 
 When checks have passed, include their evidence and use the validated label. Do not invent
 confidence, causality, freshness, or business definitions that the analysis did not establish.

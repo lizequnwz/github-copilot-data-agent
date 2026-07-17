@@ -2,34 +2,36 @@
   "schema_version": 1,
   "diagram_type": "workflow",
   "meta": {
-    "title": "Ask Data: Business Question to Validated Answer",
-    "subtitle": "Promoted, derived, or allowlisted analysis with bounded Snowflake execution and reproducible reporting",
+    "title": "Ask Data: Semantic Model to Exploration",
+    "subtitle": "One model-first path with plan-driven iteration and optional result validation",
     "output": "docs/diagrams/data-question-workflow.html",
     "animation": "none"
   },
   "lanes": [
-    { "id": "user", "label": "Business user" },
+    { "id": "user", "label": "Analyst or product owner" },
     { "id": "agent", "label": "Data agent" },
-    { "id": "semantic", "label": "Approved semantic sources" },
+    { "id": "semantic", "label": "Promoted semantic models" },
     { "id": "snowflake", "label": "Read-only Snowflake" },
-    { "id": "result", "label": "Validated result" },
-    { "id": "exceptions", "label": "Clarification or model enhancement", "variant": "exception" }
+    { "id": "workspace", "label": "Analysis workspace" },
+    { "id": "assurance", "label": "Optional assurance" },
+    { "id": "exceptions", "label": "Coverage gap", "variant": "exception" }
   ],
   "phases": [
-    { "id": "interpret", "label": "Interpret", "fromCol": 0, "toCol": 1 },
-    { "id": "compile", "label": "Resolve + compile", "fromCol": 2, "toCol": 3, "variant": "security" },
-    { "id": "execute", "label": "Execute", "fromCol": 4, "toCol": 4, "variant": "dashed" },
-    { "id": "communicate", "label": "Communicate", "fromCol": 5, "toCol": 5, "variant": "emphasis" }
+    { "id": "ask", "label": "Ask", "fromCol": 0, "toCol": 0 },
+    { "id": "resolve", "label": "Resolve model + plan", "fromCol": 1, "toCol": 2, "variant": "security" },
+    { "id": "compile", "label": "Generate SQL", "fromCol": 3, "toCol": 3, "variant": "dashed" },
+    { "id": "run", "label": "Run", "fromCol": 4, "toCol": 4, "variant": "dashed" },
+    { "id": "explore", "label": "Explore + share", "fromCol": 5, "toCol": 5, "variant": "emphasis" }
   ],
   "mainPath": [
     "question",
-    "interpretation",
     "semantic_model",
-    "compile_validate",
+    "semantic_plan",
+    "compile_sql",
     "confirm_context",
     "execute_query",
-    "check_rows",
-    "answer_report"
+    "workspace",
+    "answer"
   ],
   "nodes": [
     {
@@ -38,43 +40,52 @@
       "col": 0,
       "type": "external",
       "label": "Ask question",
-      "sublabel": "business outcome + output"
+      "sublabel": "outcome or hypothesis"
     },
     {
-      "id": "interpretation",
+      "id": "answer",
+      "lane": "user",
+      "col": 5,
+      "type": "frontend",
+      "label": "Finding / report",
+      "sublabel": "model + SQL + caveats",
+      "width": 110
+    },
+    {
+      "id": "semantic_plan",
       "lane": "agent",
-      "col": 1,
+      "col": 2,
       "type": "backend",
-      "label": "Interpret",
-      "sublabel": "metric / population / grain",
-      "tag": "compact card"
+      "label": "Build plan",
+      "sublabel": "metric / dimensions / filters",
+      "tag": "lightweight"
+    },
+    {
+      "id": "compile_sql",
+      "lane": "agent",
+      "col": 3,
+      "type": "backend",
+      "label": "Compile SQL",
+      "sublabel": "sources / joins / parameters",
+      "tag": "model generated"
     },
     {
       "id": "semantic_model",
       "lane": "semantic",
-      "col": 2,
+      "col": 1,
       "type": "database",
-      "label": "Resolve source",
-      "sublabel": "promoted / derived / ad hoc",
-      "tag": "approved objects"
-    },
-    {
-      "id": "compile_validate",
-      "lane": "agent",
-      "col": 3,
-      "type": "security",
-      "label": "Compile / validate",
-      "sublabel": "formula / filters / order",
-      "tag": "validate SQL"
+      "label": "Select model",
+      "sublabel": "promoted definitions",
+      "tag": "always required"
     },
     {
       "id": "confirm_context",
       "lane": "user",
       "col": 4,
       "type": "security",
-      "label": "Confirm",
+      "label": "Confirm context",
       "sublabel": "non-secret settings",
-      "tag": "first connection"
+      "width": 110
     },
     {
       "id": "execute_query",
@@ -82,87 +93,72 @@
       "col": 4,
       "type": "cloud",
       "label": "Execute query",
-      "sublabel": "browser SSO + read-only",
-      "tag": "max_rows + 1"
+      "sublabel": "read-only + bounded fetch"
     },
     {
-      "id": "check_rows",
-      "lane": "result",
-      "col": 4,
-      "type": "security",
-      "label": "Check result",
-      "sublabel": "shape / grain / truncation"
-    },
-    {
-      "id": "answer_report",
-      "lane": "result",
+      "id": "workspace",
+      "lane": "workspace",
       "col": 5,
       "type": "frontend",
-      "label": "Answer",
-      "sublabel": "definition / SQL / caveats",
-      "tag": "optional report"
+      "label": "Explore",
+      "sublabel": "plan / table / chart / notebook",
+      "tag": "iterate"
     },
     {
-      "id": "clarify",
-      "lane": "exceptions",
-      "col": 1,
-      "type": "messagebus",
-      "label": "Clarify",
-      "sublabel": "material business choice"
-    },
-    {
-      "id": "enhance_model",
-      "lane": "exceptions",
-      "col": 3,
-      "type": "messagebus",
-      "label": "Narrow / enhance",
-      "sublabel": "unsupported semantic operation",
-      "width": 116
-    },
-    {
-      "id": "recover",
-      "lane": "exceptions",
+      "id": "validate_result",
+      "lane": "assurance",
       "col": 5,
+      "type": "security",
+      "label": "Validate result",
+      "sublabel": "grain / nulls / ranges",
+      "tag": "optional",
+      "width": 110
+    },
+    {
+      "id": "semantic_setup",
+      "lane": "exceptions",
+      "col": 2,
       "type": "messagebus",
-      "label": "Fix and retry",
-      "sublabel": "config / SQL / result issue"
+      "label": "Semantic Setup",
+      "sublabel": "add field / join / metric",
+      "tag": "no SQL bypass"
     }
   ],
   "edges": [
-    { "from": "question", "to": "interpretation", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
-    { "from": "interpretation", "to": "semantic_model", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
-    { "from": "semantic_model", "to": "compile_validate", "variant": "emphasis", "fromSide": "top", "toSide": "bottom", "route": "drop" },
-    { "from": "compile_validate", "to": "confirm_context", "variant": "emphasis", "fromSide": "top", "toSide": "bottom", "route": "drop" },
+    { "from": "question", "to": "semantic_model", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "from": "semantic_model", "to": "semantic_plan", "variant": "emphasis", "fromSide": "top", "toSide": "bottom", "route": "drop" },
+    { "from": "semantic_plan", "to": "compile_sql", "variant": "emphasis" },
+    { "from": "compile_sql", "to": "confirm_context", "variant": "emphasis", "fromSide": "top", "toSide": "bottom", "route": "drop" },
     { "from": "confirm_context", "to": "execute_query", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
-    { "from": "execute_query", "to": "check_rows", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
-    { "from": "check_rows", "to": "answer_report", "variant": "emphasis" },
-    { "from": "interpretation", "to": "clarify", "label": "material ambiguity", "variant": "dashed", "role": "branch", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1 },
-    { "from": "compile_validate", "to": "enhance_model", "label": "unsupported", "variant": "security", "role": "branch", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelAt": [430, 539] },
-    { "from": "check_rows", "to": "recover", "label": "invalid", "variant": "security", "role": "error", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelAt": [563, 663] }
+    { "from": "execute_query", "to": "workspace", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "from": "workspace", "to": "answer", "variant": "emphasis", "role": "return", "fromSide": "right", "toSide": "right", "route": "outside-right" },
+    { "from": "workspace", "to": "validate_result", "label": "need assurance", "variant": "security", "role": "branch", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelAt": [625, 663] },
+    { "from": "validate_result", "to": "answer", "label": "checks pass", "variant": "emphasis", "role": "return", "fromSide": "right", "toSide": "right", "route": "outside-right", "labelSegment": 1 },
+    { "from": "semantic_model", "to": "semantic_setup", "label": "coverage gap", "variant": "security", "role": "error", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1 }
   ],
   "cards": [
     {
       "dot": "cyan",
-      "title": "Interpretation contract",
+      "title": "One semantic path",
       "items": [
-        "Show metric or formula, population, dimensions, filters, period, grain, source mode, and output",
-        "Proceed without another approval when business definitions are unambiguous"
-      ]
-    },
-    {
-      "dot": "rose",
-      "title": "Compiler + execution contract",
-      "items": [
-        "Preserve semantic grain and map it to unique SQL result aliases",
-        "Compile parameterized filters and time bounds; fetch one extra row to prove truncation"
+        "Every Ask Data request selects a promoted model and semantic plan",
+        "The compiler owns sources, joins, parameters, aliases, and SQL limits"
       ]
     },
     {
       "dot": "emerald",
-      "title": "Inspectable answer",
+      "title": "Exploration without bypass",
       "items": [
-        "Return period, grain, source mode, formula, query details, SQL, and caveats",
-        "Label derived and ad hoc metrics unpromoted and keep them out of shared semantics"
+        "Edit dimensions, filters, time range, ordering, or a derived expression",
+        "Notebook reruns regenerate SQL from the same semantic model"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Progressive assurance",
+      "items": [
+        "Result checks are optional until the analysis needs more confidence",
+        "Missing model coverage routes to Semantic Setup instead of arbitrary SQL"
       ]
     }
   ]

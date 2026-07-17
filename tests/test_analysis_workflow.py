@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from data_agent.analysis import analyze
 from data_agent.config import Settings
+from data_agent.io import ContractError
 from data_agent.security.sql import SQLSafetyError, validate_sql
 from data_agent.semantic.competency import test_document
 from data_agent.semantic.compiler import compile_plan
@@ -20,37 +21,31 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class AnalysisContractTests(unittest.TestCase):
-    def test_exploratory_sql_is_flexible_and_validation_is_optional(self) -> None:
+    def test_semantic_exploration_uses_model_and_validation_is_optional(self) -> None:
         request = json.loads(
             (ROOT / "examples/analysis/exploratory-sales.json").read_text()
         )
         response = analyze(request)
         self.assertEqual(response["status"], "success")
-        self.assertEqual(response["analysis_mode"], "exploratory")
-        self.assertTrue(response["unpromoted"])
-        self.assertIsNone(response["query_limit"])
+        self.assertEqual(response["metric_source"], "promoted")
+        self.assertFalse(response["unpromoted"])
+        self.assertEqual(response["model"], "demo_sales")
+        self.assertEqual(response["query_limit"], 101)
         self.assertEqual(response["result_validation"]["status"], "not_run")
-        self.assertIn("status = 'completed'", response["sql"])
+        self.assertIn("orders.status = %s", response["sql"])
+        self.assertEqual(response["referenced_objects"], ["DEMO.ANALYTICS.ORDERS"])
 
-    def test_sql_without_model_defaults_to_exploratory_mode(self) -> None:
-        response = analyze(
-            {
-                "request_id": "quick-look",
-                "sql": "SELECT CURRENT_DATE()",
-            }
-        )
-        self.assertEqual(response["status"], "planned")
-        self.assertEqual(response["analysis_mode"], "exploratory")
+    def test_analysis_requires_a_promoted_model_and_plan(self) -> None:
+        with self.assertRaisesRegex(ContractError, "model_path"):
+            analyze({"request_id": "quick-look", "sql": "SELECT CURRENT_DATE()"})
 
-    def test_exploratory_mode_allows_projection_wildcards(self) -> None:
-        response = analyze(
-            {
-                "request_id": "quick-look",
-                "sql": "SELECT * FROM DEMO.ANALYTICS.ORDERS",
-            }
+    def test_analysis_mode_field_is_rejected_to_keep_one_core_workflow(self) -> None:
+        request = json.loads(
+            (ROOT / "examples/analysis/exploratory-sales.json").read_text()
         )
-        self.assertEqual(response["status"], "planned")
-        self.assertEqual(response["analysis_mode"], "exploratory")
+        request["analysis_mode"] = "exploratory"
+        with self.assertRaisesRegex(ContractError, "no longer a request field"):
+            analyze(request)
 
     def test_default_result_grain_matches_returned_alias(self) -> None:
         request = json.loads((ROOT / "examples/analysis/sales-by-region.json").read_text())
@@ -187,41 +182,10 @@ class AnalysisContractTests(unittest.TestCase):
                 "max_rows": 10,
             },
         )
-        self.assertEqual(compiled["analysis_mode"], "derived")
+        self.assertEqual(compiled["metric_source"], "derived")
         self.assertTrue(compiled["metric_definitions"][0]["unpromoted"])
         self.assertIn("AS average_order_value", compiled["sql"])
         self.assertIn("LIMIT 11", compiled["sql"])
-
-    def test_ad_hoc_sql_uses_approved_sources_and_is_labeled_unpromoted(self) -> None:
-        request = _ad_hoc_request()
-        with patch("data_agent.analysis.load_settings", return_value=_settings()):
-            response = analyze(request)
-        self.assertEqual(response["status"], "planned")
-        self.assertEqual(response["analysis_mode"], "ad_hoc")
-        self.assertTrue(response["unpromoted"])
-        self.assertEqual(response["referenced_objects"], ["DEMO.ANALYTICS.ORDERS"])
-        self.assertEqual(response["parameters"], ["completed"])
-
-    def test_ad_hoc_sql_rejects_unparameterized_filter_values(self) -> None:
-        request = _ad_hoc_request()
-        request["sql"] = request["sql"].replace("status = %s", "status = 'completed'")
-        request["parameters"] = []
-        with (
-            patch("data_agent.analysis.load_settings", return_value=_settings()),
-            self.assertRaisesRegex(SQLSafetyError, "must use positional parameters"),
-        ):
-            analyze(request)
-
-    def test_ad_hoc_sql_rejects_unapproved_sources(self) -> None:
-        request = _ad_hoc_request()
-        request["sql"] = request["sql"].replace(
-            "DEMO.ANALYTICS.ORDERS", "DEMO.OTHER.UNAPPROVED"
-        )
-        with (
-            patch("data_agent.analysis.load_settings", return_value=_settings()),
-            self.assertRaisesRegex(SQLSafetyError, "not allowlisted"),
-        ):
-            analyze(request)
 
     def test_competency_fixture_passes(self) -> None:
         result = test_document(
@@ -368,38 +332,6 @@ def _settings() -> Settings:
         allowed_objects=(),
         allow_sensitive_sampling=False,
     )
-
-
-def _ad_hoc_request() -> dict[str, Any]:
-    return {
-        "request_id": "ad-hoc-average-order-value",
-        "analysis_mode": "ad_hoc",
-        "sql": (
-            "SELECT region, "
-            "SUM(gross_sales_amount) / NULLIF(COUNT(order_id), 0) AS average_order_value "
-            "FROM DEMO.ANALYTICS.ORDERS WHERE status = %s GROUP BY region "
-            "ORDER BY average_order_value DESC LIMIT 11"
-        ),
-        "parameters": ["completed"],
-        "max_rows": 10,
-        "result_grain": ["region"],
-        "metric": {
-            "name": "average_order_value",
-            "formula": "SUM(gross_sales_amount) / NULLIF(COUNT(order_id), 0)",
-            "description": "Gross sales divided by the number of orders.",
-            "assumptions": ["Each order ID represents one order."],
-        },
-        "interpretation": {
-            "metric": "Average order value (ad hoc)",
-            "formula": "Gross sales divided by order count",
-            "population": "Completed orders",
-            "dimensions": ["region"],
-            "filters": ["status = completed"],
-            "period": "All available dates",
-            "expected_result_grain": "One row per region",
-            "requested_output": "Table",
-        },
-    }
 
 
 if __name__ == "__main__":

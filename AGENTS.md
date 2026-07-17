@@ -1,34 +1,39 @@
 # Snowflake data exploration agent
 
-Help analysts and product owners explore business questions quickly with read-only Snowflake SQL,
-editable notebooks, Markdown analysis records, and optional semantic models. Optimize first for a
-useful analytical loop: ask, query, inspect, visualize, refine, and share.
+Help analysts and product owners explore business questions quickly through shared OSI semantic
+models, generated read-only Snowflake SQL, editable notebooks, Markdown analysis records, and
+optional result validation. Optimize for a useful loop: ask, plan, query, inspect, refine, and share.
 
 ## Scope and routing
 
-Classify end-user data-agent requests into one explicit mode. Repository engineering, testing,
+Choose one top-level route for end-user data-agent requests. Repository engineering, testing,
 documentation, and skill maintenance use the normal engineering workflow and do not require a
-data-agent mode.
+data-agent route.
 
-- **Ask Data**: exploratory questions, direct or model-assisted SQL, Snowflake execution, notebook
-  iteration, interpretation, and optional validation.
+- **Ask Data**: exploratory questions, semantic planning, generated Snowflake SQL, notebook
+  iteration, interpretation, and optional result validation.
 - **Semantic Setup**: semantic-model import, refresh, review, validation, and promotion.
 
-The custom agent owns mode-to-skill routing, optional output routing, and user-facing continuity.
+These are product routes, not alternative analysis modes. Ask Data has one semantic-model-first
+workflow; exploratory and validated describe assurance state only. The custom agent owns
+route-to-skill routing, optional output routing, and user-facing continuity.
 Each skill owns its detailed procedure; do not duplicate those steps in repository or custom-agent
 instructions.
 
-## Product priorities
+## Product invariants
 
-- **Explore first**: direct SQL is a normal starting point. Do not require a promoted metric,
-  eight-field interpretation contract, allowlist, parameterized predicates, explicit SQL limit, or
-  result checks before helping the user investigate a question.
-- **Make work visible**: show the SQL and results and create a local Markdown/notebook workspace
-  when iteration would help. Keep the notebook editable and route reruns through the same read-only
-  execution helper.
-- **Add assurance progressively**: offer shared semantic definitions, parameterization, result-grain
-  checks, reproducible plans, and controlled reports when the question stabilizes or the user asks
-  for confidence. Clearly label exploratory, derived, and ad hoc results as unpromoted.
+- **Semantic model always**: every Ask Data query must select a promoted model from
+  `semantic/models/` and compile SQL from a semantic plan. A plan may use a promoted metric or a
+  request-scoped derived metric over promoted fields and relationships. If the model does not cover
+  the question, route to Semantic Setup instead of bypassing it with arbitrary SQL.
+- **Explore first**: require only the question and the smallest useful semantic plan. Do not require
+  exhaustive business metadata or result checks before helping the user explore.
+- **Make work visible**: show the semantic model, editable plan, generated SQL, parameters, results,
+  and provenance. In notebooks, users edit the plan or derived expression; SQL is regenerated from
+  the model and is not the source of truth.
+- **Add assurance progressively**: offer result-grain, completeness, null, and range checks when the
+  question stabilizes or the user asks for confidence. Request-scoped derived metrics remain
+  unpromoted until explicitly promoted through Semantic Setup.
 - **Keep hard safety boundaries**: never expose credentials; require explicit non-secret connection
   context confirmation; execute only parsed read-only queries; preserve query timeout, cancellation,
   row-fetch, and result-byte protections; and never modify Snowflake data.
@@ -36,8 +41,8 @@ instructions.
   provenance, apply audited decisions, pass official and readiness validation, and obtain explicit
   destination confirmation before promotion.
 
-The owning skills define the detailed exploratory and assurance procedures. Governance is an
-available maturity step, not a prerequisite for useful analysis.
+The owning skills define the detailed exploration and assurance procedures. Semantic consistency is
+the foundation; formal result validation is the optional maturity step.
 
 ## Project boundaries
 

@@ -26,9 +26,15 @@ class ReportingTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "success")
         self.assertIn("Result validation: `not_run`", markdown)
-        self.assertIn("SUM(gross_sales_amount)", markdown)
+        self.assertIn("Semantic model: `demo_sales`", markdown)
+        self.assertIn("SUM(orders.gross_sales_amount)", markdown)
         self.assertEqual(notebook["nbformat"], 4)
         self.assertTrue(any(cell["cell_type"] == "code" for cell in notebook["cells"]))
+        notebook_source = "".join(
+            "".join(cell.get("source", [])) for cell in notebook["cells"]
+        )
+        self.assertIn("PLAN =", notebook_source)
+        self.assertNotIn("SQL =", notebook_source)
 
     def test_exploratory_report_is_allowed_and_clearly_labeled(self) -> None:
         with tempfile.TemporaryDirectory(prefix="reports-") as directory:

@@ -121,7 +121,7 @@ def main() -> int:
             "plan": analysis["normalized_plan"],
             "metadata": {
                 "title": "Completed-order gross sales by region",
-                "analysis_mode": "Ask Data",
+                "workflow": "Ask Data",
                 "semantic_model": analysis["model"],
                 "period": analysis["period"]["label"],
                 "semantic_grain": ", ".join(analysis["grain"]),

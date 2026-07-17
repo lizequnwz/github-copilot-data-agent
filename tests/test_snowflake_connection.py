@@ -33,6 +33,41 @@ class SnowflakeConnectionTests(unittest.TestCase):
         self.assertEqual(result["authentication"]["mode"], "externalbrowser")
         self.assertIsNone(result["configuration"]["role"])
 
+    def test_simple_config_maps_to_snowflake_connection_parameters(self) -> None:
+        path = self._config(
+            "snowflake:\n"
+            "  oauth_url: https://example.okta.com\n"
+            "  account: org-account\n"
+            "  region: us-east-1\n"
+            "  default_warehouse: analytics_wh\n"
+            "  database: analytics\n"
+            "  schema: reporting\n"
+            "  role: analyst\n"
+        )
+        captured: dict[str, object] = {}
+        connector = types.ModuleType("snowflake.connector")
+        connector.connect = lambda **kwargs: captured.update(kwargs) or object()  # type: ignore[attr-defined]
+        snowflake = types.ModuleType("snowflake")
+        snowflake.connector = connector  # type: ignore[attr-defined]
+
+        with patch.dict(
+            sys.modules,
+            {"snowflake": snowflake, "snowflake.connector": connector},
+        ):
+            _connect(
+                {"request_id": "connect", "configuration_confirmed": True},
+                Settings.from_file(path),
+            )
+
+        self.assertEqual(captured["authenticator"], "https://example.okta.com")
+        self.assertEqual(captured["account"], "org-account")
+        self.assertEqual(captured["region"], "us-east-1")
+        self.assertEqual(captured["warehouse"], "analytics_wh")
+        self.assertEqual(captured["database"], "analytics")
+        self.assertEqual(captured["schema"], "reporting")
+        self.assertEqual(captured["role"], "analyst")
+        self.assertNotIn("user", captured)
+
     def test_oauth_uses_environment_token_without_exposing_it(self) -> None:
         path = self._config(
             "snowflake:\n"

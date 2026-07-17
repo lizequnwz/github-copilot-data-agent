@@ -48,6 +48,7 @@ class ConnectionDiagnosticsTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertTrue(captured["configuration_confirmed"])
         self.assertIn("Status: connected", output)
+        self.assertIn("Authentication: externalbrowser", output)
         self.assertIn("warehouse=preferred_wh", output)
         self.assertIn("warehouse=EFFECTIVE_WH", output)
         self.assertIn("Warning: effective warehouse differs", output)

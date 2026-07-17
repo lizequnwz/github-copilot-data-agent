@@ -40,13 +40,18 @@ def run_check(
         return 2, [*lines, f"Configuration: {_safe_error(error, None)}"]
 
     authentication = settings.public_authentication()
+    if settings.oauth_url:
+        lines.append(f"OAuth URL: {settings.oauth_url}")
+    else:
+        lines.append(f"Authentication: {authentication['mode']}")
     lines.extend(
         [
-            f"Authentication: {authentication['mode']}",
             f"Account: {_value(settings.account)}",
-            f"User: {_value(settings.user)}",
+            f"Region: {_value(settings.region)}",
         ]
     )
+    if settings.user:
+        lines.append(f"User: {settings.user}")
     if settings.authenticator == "oauth":
         availability = "available" if authentication["token_available"] else "missing"
         lines.append(f"OAuth token: {settings.oauth_token_env} ({availability})")

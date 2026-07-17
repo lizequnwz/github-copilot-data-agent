@@ -25,6 +25,8 @@ class Settings:
     allowed_objects: tuple[str, ...]
     allow_sensitive_sampling: bool
     oauth_token_env: str = "SNOWFLAKE_OAUTH_TOKEN"
+    oauth_url: str | None = None
+    region: str | None = None
 
     @classmethod
     def from_file(cls, path: str | Path = "snowflake_config.yaml") -> "Settings":
@@ -37,34 +39,64 @@ class Settings:
         sf = _mapping(raw.get("snowflake"), "snowflake")
         limits = _mapping(raw.get("limits", {}), "limits")
         access = _mapping(raw.get("access", {}), "access")
+        oauth_url = _optional_string(sf.get("oauth_url"))
         return cls(
             account=_optional_string(sf.get("account")),
             user=_optional_string(sf.get("user")),
-            authenticator=str(sf.get("authenticator", "externalbrowser")).strip().casefold(),
+            authenticator=(
+                oauth_url
+                or str(sf.get("authenticator", "externalbrowser")).strip().casefold()
+            ),
             role=_optional_string(sf.get("role")),
-            warehouse=_optional_string(sf.get("warehouse")),
+            warehouse=_optional_string(
+                sf.get("default_warehouse", sf.get("warehouse"))
+            ),
             database=_optional_string(sf.get("database")),
             schema=_optional_string(sf.get("schema")),
             query_tag=str(sf.get("query_tag", "copilot_data_agent")),
             max_rows=_config_positive_int(limits, "max_rows", 5000),
             max_bytes=_config_positive_int(limits, "max_result_bytes", 5_000_000),
             timeout_seconds=_config_positive_int(limits, "timeout_seconds", 60),
-            blocked_schemas=tuple(str(v).upper() for v in access.get("blocked_schemas", [])),
+            blocked_schemas=tuple(
+                str(v).upper()
+                for v in access.get(
+                    "blocked_schemas",
+                    ["SNOWFLAKE.ACCOUNT_USAGE", "RAW_PII"],
+                )
+            ),
             allowed_objects=tuple(str(v).upper() for v in access.get("allowed_objects", [])),
             allow_sensitive_sampling=bool(access.get("allow_sensitive_sampling", False)),
             oauth_token_env=str(
                 sf.get("oauth_token_env", "SNOWFLAKE_OAUTH_TOKEN")
             ).strip(),
+            oauth_url=oauth_url,
+            region=_optional_string(sf.get("region")),
         )
 
     def readiness_errors(self) -> list[str]:
         fields = {
             "snowflake.account": self.account,
-            "snowflake.user": self.user,
         }
+        optional_fields = {
+            "snowflake.oauth_url": self.oauth_url,
+            "snowflake.region": self.region,
+            "snowflake.default_warehouse": self.warehouse,
+            "snowflake.database": self.database,
+            "snowflake.schema": self.schema,
+            "snowflake.role": self.role,
+        }
+        fields.update(
+            (name, value) for name, value in optional_fields.items() if value is not None
+        )
         errors = [name for name, value in fields.items() if not value or "REPLACE_WITH" in value]
-        if self.authenticator not in {"externalbrowser", "oauth"}:
-            errors.append("snowflake.authenticator must be externalbrowser or oauth")
+        if (
+            self.authenticator not in {"externalbrowser", "oauth"}
+            and not self.authenticator.startswith(("https://", "http://"))
+        ):
+            errors.append(
+                "snowflake.oauth_url must be an HTTP(S) URL, or "
+                "snowflake.authenticator must be externalbrowser or oauth"
+            )
         if self.authenticator == "oauth":
             if not self.oauth_token_env:
                 errors.append("snowflake.oauth_token_env must name an environment variable")
@@ -74,10 +106,13 @@ class Settings:
 
     def public_context(self) -> dict[str, str | None]:
         return {
+            "oauth_url": self.oauth_url,
             "account": self.account,
+            "region": self.region,
             "user": self.user,
             "authenticator": self.authenticator,
             "role": self.role,
+            "default_warehouse": self.warehouse,
             "warehouse": self.warehouse,
             "database": self.database,
             "schema": self.schema,

@@ -87,8 +87,8 @@ uv run data-agent doctor --connect
 ```
 
 `doctor` displays only non-secret configuration. The explicit `--connect` command confirms that
-displayed context for the diagnostic. Browser SSO and environment-token OAuth are supported; tokens
-never belong in YAML or output.
+displayed context for the diagnostic. The configured OAuth URL is passed to Snowflake as the
+authenticator; passwords and tokens never belong in YAML or output.
 
 Live Ask Data requests set `execute: true` and confirm the displayed context. Runtime protections
 include parsed read-only SQL, model-bound sources, timeouts, cancellation, fetch limits, and result

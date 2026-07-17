@@ -53,6 +53,7 @@ def _connect(request: dict[str, Any], settings: Settings) -> Any:
         raise ContractError("Snowflake connector missing; run uv sync --extra snowflake") from exc
     connection_parameters: dict[str, Any] = {
         "account": settings.account,
+        "region": settings.region,
         "user": settings.user,
         "authenticator": settings.authenticator,
         "role": settings.role,

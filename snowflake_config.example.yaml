@@ -1,29 +1,10 @@
 # Copy this file to snowflake_config.yaml and fill in the non-secret connection context.
-# Use externalbrowser for SAML/browser SSO or oauth with a token environment variable.
 # Never add passwords or literal tokens to this file.
 snowflake:
+  oauth_url: "https://REPLACE_WITH_OAUTH_URL"
   account: "REPLACE_WITH_ORG_ACCOUNT"
-  user: "REPLACE_WITH_USERNAME"
-  authenticator: "externalbrowser"
-  # For authenticator: oauth, export this variable before connecting.
-  oauth_token_env: "SNOWFLAKE_OAUTH_TOKEN"
-  # Optional preferred session context. Omit values to use Snowflake defaults.
-  role: "DATA_AGENT_READONLY"
-  warehouse: "DATA_AGENT_WH"
+  region: "REPLACE_WITH_REGION"
+  default_warehouse: "DATA_AGENT_WH"
   database: "REPLACE_WITH_DATABASE"
   schema: "REPLACE_WITH_SCHEMA"
-  query_tag: "copilot_data_agent"
-
-limits:
-  max_rows: 5000
-  max_result_bytes: 5000000
-  timeout_seconds: 60
-
-access:
-  blocked_schemas:
-    - "SNOWFLAKE.ACCOUNT_USAGE"
-    - "RAW_PII"
-  # Optional scope for metadata discovery and Semantic Setup verification.
-  # Ask Data query sources always come from the selected promoted model.
-  allowed_objects: []
-  allow_sensitive_sampling: false
+  role: "DATA_AGENT_READONLY"
